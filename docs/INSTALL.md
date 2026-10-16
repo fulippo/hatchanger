@@ -18,11 +18,10 @@ cd ~ && git clone https://github.com/fulippo/hatchanger.git
 ./hatchanger/install.sh
 ```
 
-The installer asks whether to run under [AFC](AFC.md) (only if AFC is installed) and whether
-you have the [hat-ID reader](HAT_ID.md). Then it:
+The installer asks whether to run under [AFC](AFC.md) (only if AFC is installed). Then it:
 
-- **Links the macros.** `hatchanger.cfg` (and `hatchanger_id.cfg`) are linked from
-  `~/printer_data/config/hatchanger/` into the repo, so updates reach them.
+- **Links the macros.** `hatchanger.cfg` is linked from `~/printer_data/config/hatchanger/` into
+  the repo, so updates reach it.
 - **Copies the lane file once.** `hatchanger_tools.cfg` (the `T0`, `T1`, … macros) or, under
   AFC, `hatchanger_afc.cfg` (the lanes). Edit it when you add racks.
 - **Creates `hatchanger_user.cfg`** for your machine's values. It's included last, so anything
@@ -36,7 +35,7 @@ you have the [hat-ID reader](HAT_ID.md). Then it:
   offers to disable the AFC hardware files for a unit you don't have.
 
 Every file it edits is backed up first. `./hatchanger/install.sh --help` lists the options
-(`--afc`, `--standalone`, `--hat-id`, `-y`, …).
+(`--afc`, `--standalone`, `-y`, …).
 
 After restarting Klipper, the installer runs `./hatchanger/install.sh --check`, which reports
 anything that didn't start cleanly. You can run it at any time.

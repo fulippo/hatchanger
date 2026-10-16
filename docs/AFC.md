@@ -106,7 +106,6 @@ and set the spool, colour or material on the lane.
 ```ini
 [AFC_HatChanger HatChanger_1]
 extruder: extruder
-hat_id_check: True          # with hatchanger_id.cfg: HAT_ID_CHECK after every pickup / drop-off
 leave_stub_for_poop: auto   # auto | true | false (see step 5)
 ```
 

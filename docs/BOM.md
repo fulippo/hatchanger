@@ -16,9 +16,6 @@ The only HatChanger part on the toolhead is `front_body_hatchanger`, built on th
 | 1 | M3 heat-set insert, D5 × L4 | In the bottom of `front_body_hatchanger`: upper filament guide at the blade |
 | — | FilamATrix cutter, G2E version | From the [FilamATrix BOM](https://github.com/thunderkeys/FilamATrix#bill-of-materials): `[a]_cutting_arm_g2e`, `[a]_knife_holder` (or `_olfa`), `rear_body_g2e`, the Stealthburner printhead front + rear for your hotend (with its own heat-set inserts, one of them the lower blade guide), `beefy_depressor` + mount, #4 hobby blade or OLFA KB4-F/5, 0.5×4×25 spring, M2.5×16, M3 screws and inserts as listed there. **Not** their `front_body_g2e`: `front_body_hatchanger` replaces it |
 | — | 2-wire lead | Switch → an IO input on the toolhead board (COM + NC or NO) |
-| — | 2 thin wires (hat ID) | ~30 AWG, from under the two head magnets, through the channel in the pad, out on the +X side behind the cable cover, to the hat-ID reader |
-| 1 | Hat-ID reader (optional) | ADS1115 breakout module + 10k divider, see [Hat ID](HAT_ID.md) |
-| — | 4-wire lead | Reader → SB2209 USB `I2C` header (5V, GND, SCL, SDA) |
 
 ## Hat (per lane)
 
@@ -26,8 +23,7 @@ The only HatChanger part on the toolhead is `front_body_hatchanger`, built on th
 |---:|---:|---|---|
 | 1 | 5 | `hat` | Printed ABS/ASA |
 | 1 | 5 | ECAS04 bowden coupler | Genuine Bondtech Push-fit ECAS 4 mm; generic clones also work |
-| 4 | 20 | Magnet Ø6×3 mm, axial, N42SH | 2 in the bottom (head, also the ID contacts: keep the nickel plating), 2 in the front face (rack snap) |
-| 1 | 5 | Resistor, ¼ W axial, 1 % | Hat ID: a different value per lane (lane 0–5: 1k, 2.2k, 4.7k, 10k, 22k, 47k), in the slot at the back of the hat, leads under the two bottom magnets |
+| 4 | 20 | Magnet Ø6×3 mm, axial, N42SH | 2 in the bottom (head), 2 in the front face (rack snap) |
 | ~1 m | ~5 m | PTFE 4×2 mm bowden | One continuous tube from spool/buffer, through the hat, ending 20.5 mm below it as the stinger. Length depends on spool location |
 
 ## Hat rack (per lane)
@@ -53,7 +49,7 @@ The only HatChanger part on the toolhead is `front_body_hatchanger`, built on th
 | Qty | Part | Orientation / post-processing | Est. g |
 |---:|---|---|---:|
 | 1 | `front_body_hatchanger` | As FilamATrix's `front_body_g2e` (front face on the bed). The sensor pocket comes with a break-away support already in the model: don't add slicer supports there. Drill dowel holes to 3.0 mm, check that a hat's cone drops into its socket and lifts out freely, and check that the 5.5 mm ball rolls freely in its channel | ~25 |
-| 5 | `hat` | Upside down as exported: ECAS end on the bed, stinger sleeve pointing up, no supports. All facets are 45° or less; the only overhangs are the 1.2 mm ECAS seat ring, the resistor slot roof (a short bridge) and the horizontal magnet holes. The interface face is a top surface: ironing helps. | ~19 |
+| 5 | `hat` | Upside down as exported: ECAS end on the bed, stinger sleeve pointing up, no supports. All facets are 45° or less; the only overhangs are the 1.2 mm ECAS seat ring, the slot roof in the back face (a short bridge) and the horizontal magnet holes. The interface face is a top surface: ironing helps. | ~19 |
 | 5 | `hat_rack` | Upright, flat bottom on the bed, no supports | ~38 |
 | (5) | `hat_rack_spacer_12` or `_17` | On its side, as exported (key and groove are vertical sections), no supports | ~30 / ~43 |
 | 1 | `stinger_gauge` | Flat face on the bed, as exported. Assembly jig, one is enough | ~3 |
@@ -73,10 +69,7 @@ About **85 g of ABS/ASA** (without spacers) in total (model volume × 1.05 g/cm�
 
 ## Assembly notes
 
-- **Hat ID contacts:** the two bottom magnets of each hat and the two pad magnets of the head double as electrical contacts, so their faces must touch across the interface:
-  1. Hat: slide the resistor into the slot in the back face (it sits above the magnets). From each end, a 1.0 mm slit runs down through the back wall into a magnet pocket, open at the back and at the bottom: lay each lead into its slit from behind (no threading), bend the end flat against the pocket ceiling from the bottom side and trim it to ~3 mm. Glue the magnet in on top of it with epoxy around the sides, and press it **flush** with the bottom face against a flat plate (glass) until the glue sets. The lead is trapped between the magnet and the pocket (0.7 mm deeper than the magnet, for the 0.6 mm lead). A drop of glue in the slot keeps the resistor from rattling.
-  2. Head: push two thin wires into the channel opening on the +X side of the pad and along the channel that runs behind the magnet pockets (2.4 × 2.2 mm); each wire drops into its pocket through a small notch at the floor, strip ~4 mm, lay each end flat on a magnet pocket floor (the head pockets are 0.5 mm deeper than the magnet: 26–30 AWG, squashed flat) and glue the magnets flush the same way.
-  3. Check with a multimeter between the two head wires with a hat seated: you should read the hat's resistor. Then connect them to the reader and run `HAT_ID`.
+- **Magnets:** glue every magnet with epoxy around the sides and press it **flush** with its face against a flat plate (glass) until the glue sets.
 - **Magnet polarity:** mark one face of every magnet before gluing. Glue one reference hat first (bottom and front-face magnets) and use it to orient every other hat, the toolhead and every rack, so all hats attract in the same orientation. Glue the two front-face magnets of a hat with the same face outward, and check that a hat snaps flat against its rack before the glue sets.
 - **Stinger:**
   1. Cut the bowden end square and lightly chamfer its outer edge. Push it down through the ECAS, the hat and the sleeve.

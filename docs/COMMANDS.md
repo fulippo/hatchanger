@@ -13,7 +13,6 @@
 | `HAT_CAL_PICKUP LANE=n GAP=5` | Empty head: stops `GAP` mm under a docked hat, for jogging the dock position. |
 | `HAT_TEST_LANE LANE=n COUNT=10` | Repeated pickups and drop-offs of one lane, without loading the nozzle. `DWELL=s` between cycles. |
 | `HAT_TEST_ALL COUNT=5` | The same for every lane in turn (`LANES=1,0` to choose). |
-| `HAT_ID` / `HAT_ID_CHECK LANE=n` | [Hat-ID reader](HAT_ID.md): report the hat on the head / error unless it is hat n (`-1`: empty). |
 
 `HAT_PICKUP`, `HAT_DOCK` and the test commands accept `DRY=1`: the same movements without
 turning the extruder (pull the filament out of the hats first).

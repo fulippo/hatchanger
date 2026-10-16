@@ -4,12 +4,9 @@ Known limitations and planned work. Contributions on any of these are welcome.
 
 ## Open
 
-- **Hat ID in the standalone macros.** The reader and `HAT_ID` / `HAT_ID_CHECK` work, but the
-  change macros don't use them yet: no automatic check after a pickup or drop-off, no startup
-  sync from the hat on the head, no print watch. (The AFC unit already checks after each change.)
 - **Error recovery.** Errors stop the sequence and wait for you; there's no retry logic.
-- **Hat tilt under bowden pull.** With the magnets at the back (for the hat-ID wiring), a bowden
-  pulling backwards tips the hat about its back edge, where the magnets have little lever.
+- **Hat tilt under bowden pull.** With the magnets at the back, a bowden pulling backwards tips
+  the hat about its back edge, where the magnets have little lever.
   Options, not yet built:
   - **3 magnets + 1 pin:** a third 6×3 magnet in place of the +X dowel (fits with ~0.6–0.75 mm
     walls); the −X dowel stays, in a slot pointing at the cone.
@@ -17,7 +14,7 @@ Known limitations and planned work. Contributions on any of these are welcome.
     lever.
   - **Forward extension:** grow the pad and hat 4–5 mm forward for a full front magnet pair
     (needs the rack moved).
-  - **Pogo-pin ID contacts:** move the magnets back to the front.
+  - **Front magnets:** move the magnets back to the front of the pad.
 - **Runout and endless spool under AFC.** The lanes have no sensors.
 
 ## Constraints
