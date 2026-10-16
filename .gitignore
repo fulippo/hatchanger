@@ -1,0 +1,47 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# --- Klipper / printer runtime ---
+# Local, machine-specific files that should not be shared
+klipper/config/*.local.cfg
+printer-*.cfg
+moonraker.conf
+*.log
+klippy.log*
+moonraker.log*
+# Klipper SAVE_CONFIG backups
+printer-[0-9]*_[0-9]*.cfg
+
+# --- CAD ---
+# Autosave / backup / lock files
+*.FCBak
+*.FCStd1
+*.bak
+*.tmp
+~$*
+.~lock.*
+# Fusion 360 / OpenSCAD caches
+*.f3d.bak
+*.scad.bak
+# Slicer outputs (generated from STL/3MF, keep sources only)
+*.gcode
+*.bgcode
+*.ufp
+
+# --- Editors / OS ---
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store
+Thumbs.db
+
+# test inputs are not slicer output
+!klipper/tests/*.gcode

@@ -1,0 +1,13 @@
+# Normalize text line endings
+* text=auto eol=lf
+
+# CAD and mesh files are binary; don't diff or merge them as text
+*.stl   binary
+*.3mf   binary
+*.step  binary
+*.stp   binary
+*.f3d   binary
+*.f3z   binary
+*.FCStd binary
+*.png   binary
+*.jpg   binary

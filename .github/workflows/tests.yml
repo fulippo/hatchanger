@@ -1,0 +1,44 @@
+name: tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  installer:
+    name: install.sh / cfgtool
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Syntax
+        run: |
+          bash -n install.sh
+          pip install pyflakes
+          python -m pyflakes scripts/cfgtool.py tests/test_install.py klipper/extras/AFC_HatChanger.py klipper/tests/*.py
+      - name: Installer tests (fake printer homes, fake Moonraker)
+        run: python tests/test_install.py
+
+  klipper-afc:
+    name: Klipper + AFC integration
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: hatchanger
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Klipper (linux MCU dictionary) and AFC
+        run: |
+          git clone --depth 1 https://github.com/Klipper3d/klipper
+          git clone --depth 1 https://github.com/ArmoredTurtle/AFC-Klipper-Add-On afc
+          cd klipper
+          printf 'CONFIG_MACH_LINUX=y\n' > .config
+          make olddefconfig && make -j"$(nproc)"
+          pip install -r scripts/klippy-requirements.txt
+          ln -sf "$GITHUB_WORKSPACE"/afc/extras/*.py klippy/extras/
+      - name: Macros + AFC unit in Klipper batch mode
+        run: python hatchanger/klipper/tests/run_afc_test.py --klipper klipper
