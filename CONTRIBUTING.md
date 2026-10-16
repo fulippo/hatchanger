@@ -16,8 +16,9 @@ Open an [issue](https://github.com/fulippo/hatchanger/issues) and include:
 1. Fork the repository and create a branch from `main`.
 2. Keep each pull request focused on one change.
 3. Run the tests (see below) and describe what you tested on a printer.
-4. Update the documentation in `docs/` when behaviour or configuration changes, and add an entry
-   under *Unreleased* in [CHANGELOG.md](CHANGELOG.md).
+4. Update the documentation in `docs/` when behaviour or configuration changes.
+5. Title the pull request as a [Conventional Commit](https://www.conventionalcommits.org/)
+   (`feat:`, `fix:`, `docs:`, …).
 
 ### CAD changes
 
