@@ -9,5 +9,5 @@ everyone. Be respectful and constructive, and assume good intent.
 ## Reporting
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be reported to the
-maintainer at filippo.pisano@gmail.com. All reports will be reviewed and handled promptly and
+maintainer at fulippo@gmail.com. All reports will be reviewed and handled promptly and
 confidentially.
