@@ -18,7 +18,7 @@ Open an [issue](https://github.com/fulippo/hatchanger/issues) and include:
 3. Run the tests (see below) and describe what you tested on a printer.
 4. Update the documentation in `docs/` when behaviour or configuration changes.
 5. Title the pull request as a [Conventional Commit](https://www.conventionalcommits.org/)
-   (see [Releases](#releases)).
+   (`feat:`, `fix:`, `docs:`, …).
 
 ### CAD changes
 
@@ -44,25 +44,6 @@ python klipper/tests/run_afc_test.py --klipper ~/klipper
 The setup for the Klipper test is at the top of
 [`run_afc_test.py`](klipper/tests/run_afc_test.py). Both run in CI on every push and pull
 request.
-
-## Releases
-
-Releases are made by [release-please](https://github.com/googleapis/release-please). It reads
-the commit messages on `main`, keeps a release pull request open with the next version and the
-[changelog](CHANGELOG.md), and tags the release when that pull request is merged.
-
-A release covers what runs on the printer: the Klipper macros, the AFC unit and the installer.
-Use these commit types:
-
-| Type | Use it for | Release |
-|---|---|---|
-| `feat:` | a new macro, option or installer feature | minor |
-| `fix:` | a bug fix | patch |
-| `feat!:` / `fix!:` | a change that needs users to edit their config | minor before 1.0, then major |
-| `docs:`, `chore:`, `ci:`, `test:`, `refactor:` | anything else | none |
-
-Commits that only touch `cad/`, `docs/`, `.github/` or the tests never trigger a release,
-whatever their type. CAD changes don't get release notes: describe them in the pull request.
 
 ## Code of conduct
 
