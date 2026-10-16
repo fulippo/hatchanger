@@ -1,14 +1,5 @@
 # Changelog
 
-All notable changes to this project are documented in this file.
-
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this
-project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-
-## [Unreleased]
-
-### Added
-
-- First public release: parametric CAD (front body, hats, racks, spacers, stinger gauge, PTFE
-  rail clamp), Klipper macros, AFC unit driver, one-command installer
-  and integration tests.
+Changes to the Klipper macros, the AFC unit and the installer. This file is maintained by
+[release-please](https://github.com/googleapis/release-please) from
+[Conventional Commits](https://www.conventionalcommits.org/); don't edit it by hand.

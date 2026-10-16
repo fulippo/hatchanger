@@ -9,5 +9,5 @@
 ## Checklist
 
 - [ ] Docs updated (`README.md` / `docs/`)
-- [ ] `CHANGELOG.md` entry under *Unreleased*
+- [ ] Title is a [Conventional Commit](https://www.conventionalcommits.org/) (`feat:`, `fix:`, `docs:`, …)
 - [ ] Regenerated STL/STEP committed with CAD changes
