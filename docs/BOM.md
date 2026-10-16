@@ -2,52 +2,51 @@
 
 Stealthburner + Galileo 2 with the FilamATrix filament cutter. Quantities for **5 lanes** (T0–T4).
 The only HatChanger part on the toolhead is `front_body_hatchanger`, built on the FilamATrix G2E front body (stock G2E toolhead board mount).
-Prices checked September 2026 at the sources linked at the bottom, converted roughly to €, VAT and shipping excluded.
 
 ## Toolhead (once)
 
-| Qty | Item | Specification / notes | € each | € total |
-|---:|---|---|---:|---:|
-| 1 | `front_body_hatchanger` | Printed ABS/ASA. Replaces the G2E `front_body` (and FilamATrix's `front_body_g2e`). The +X wall in front of the toolhead board is 1 mm thinner than stock, so an SB2209 doesn't touch it | — | — |
-| 2 | Dowel pin 3×8 mm | ISO 8734 / DIN 6325, hardened, m6. Press in after drilling the holes to 3.0 mm | 0.15 | 0.30 |
-| 2 | Magnet Ø6×3 mm, axial, N42SH | High-temp grade (150 °C) for chamber heat; standard N grades are rated to 80 °C | 0.55 | 1.10 |
-| 1 | Omron D2F switch, pin plunger | After-gears filament sensor (D2F or D2F-5, no lever), FilamATrix's +X pocket. Price not checked: genuine Omron from DigiKey/Mouser, clones are cheaper | — | — |
-| 1 | Steel ball 5.5 mm | Sensor ball; 304 stainless is fine. Sold in packs (50 for about $11) | 0.20 | 0.20 |
-| 2 | M2×10 self-tapping screw | Hold the D2F (as in FilamATrix) | 0.05 | 0.10 |
-| 1 | M3 heat-set insert, D5 × L4 | In the bottom of `front_body_hatchanger`: upper filament guide at the blade | 0.10 | 0.10 |
-| — | FilamATrix cutter, G2E version | From the [FilamATrix BOM](https://github.com/thunderkeys/FilamATrix#bill-of-materials): `[a]_cutting_arm_g2e`, `[a]_knife_holder` (or `_olfa`), `rear_body_g2e`, the Stealthburner printhead front + rear for your hotend (with its own heat-set inserts, one of them the lower blade guide), `beefy_depressor` + mount, #4 hobby blade or OLFA KB4-F/5, 0.5×4×25 spring, M2.5×16, M3 screws and inserts as listed there. **Not** their `front_body_g2e`: `front_body_hatchanger` replaces it | — | — |
-| — | 2-wire lead | Switch → an IO input on the toolhead board (COM + NC or NO) | — | — |
-| — | 2 thin wires (hat ID) | ~30 AWG, from under the two head magnets, through the channel in the pad, out on the +X side behind the cable cover, to the hat-ID reader | — | — |
-| 1 | Hat-ID reader (optional) | ADS1115 breakout module + 10k divider, see [Hat ID](HAT_ID.md) | — | — |
-| — | 4-wire lead | Reader → SB2209 USB `I2C` header (5V, GND, SCL, SDA) | — | — |
+| Qty | Item | Specification / notes |
+|---:|---|---|
+| 1 | `front_body_hatchanger` | Printed ABS/ASA. Replaces the G2E `front_body` (and FilamATrix's `front_body_g2e`). The +X wall in front of the toolhead board is 1 mm thinner than stock, so an SB2209 doesn't touch it |
+| 2 | Dowel pin 3×8 mm | ISO 8734 / DIN 6325, hardened, m6. Press in after drilling the holes to 3.0 mm |
+| 2 | Magnet Ø6×3 mm, axial, N42SH | High-temp grade (150 °C) for chamber heat; standard N grades are rated to 80 °C |
+| 1 | Omron D2F switch, pin plunger | After-gears filament sensor (D2F or D2F-5, no lever), FilamATrix's +X pocket. Genuine Omron from DigiKey/Mouser or a clone |
+| 1 | Steel ball 5.5 mm | Sensor ball; 304 stainless is fine |
+| 2 | M2×10 self-tapping screw | Hold the D2F (as in FilamATrix) |
+| 1 | M3 heat-set insert, D5 × L4 | In the bottom of `front_body_hatchanger`: upper filament guide at the blade |
+| — | FilamATrix cutter, G2E version | From the [FilamATrix BOM](https://github.com/thunderkeys/FilamATrix#bill-of-materials): `[a]_cutting_arm_g2e`, `[a]_knife_holder` (or `_olfa`), `rear_body_g2e`, the Stealthburner printhead front + rear for your hotend (with its own heat-set inserts, one of them the lower blade guide), `beefy_depressor` + mount, #4 hobby blade or OLFA KB4-F/5, 0.5×4×25 spring, M2.5×16, M3 screws and inserts as listed there. **Not** their `front_body_g2e`: `front_body_hatchanger` replaces it |
+| — | 2-wire lead | Switch → an IO input on the toolhead board (COM + NC or NO) |
+| — | 2 thin wires (hat ID) | ~30 AWG, from under the two head magnets, through the channel in the pad, out on the +X side behind the cable cover, to the hat-ID reader |
+| 1 | Hat-ID reader (optional) | ADS1115 breakout module + 10k divider, see [Hat ID](HAT_ID.md) |
+| — | 4-wire lead | Reader → SB2209 USB `I2C` header (5V, GND, SCL, SDA) |
 
 ## Hat (per lane)
 
-| Per lane | ×5 | Item | Specification / notes | € each | € ×5 |
-|---:|---:|---|---|---:|---:|
-| 1 | 5 | `hat` | Printed ABS/ASA | — | — |
-| 1 | 5 | ECAS04 bowden coupler | Genuine Bondtech Push-fit ECAS 4 mm; generic clones are a few cents each | 1.50 | 7.50 |
-| 4 | 20 | Magnet Ø6×3 mm, axial, N42SH | 2 in the bottom (head, also the ID contacts: keep the nickel plating), 2 in the front face (rack snap) | 0.55 | 11.00 |
-| 1 | 5 | Resistor, ¼ W axial, 1 % | Hat ID: a different value per lane (lane 0–5: 1k, 2.2k, 4.7k, 10k, 22k, 47k), in the slot at the back of the hat, leads under the two bottom magnets | 0.02 | 0.10 |
-| ~1 m | ~5 m | PTFE 4×2 mm bowden | One continuous tube from spool/buffer, through the hat, ending 20.5 mm below it as the stinger. Length depends on spool location | 3.00 | 15.00 |
+| Per lane | ×5 | Item | Specification / notes |
+|---:|---:|---|---|
+| 1 | 5 | `hat` | Printed ABS/ASA |
+| 1 | 5 | ECAS04 bowden coupler | Genuine Bondtech Push-fit ECAS 4 mm; generic clones also work |
+| 4 | 20 | Magnet Ø6×3 mm, axial, N42SH | 2 in the bottom (head, also the ID contacts: keep the nickel plating), 2 in the front face (rack snap) |
+| 1 | 5 | Resistor, ¼ W axial, 1 % | Hat ID: a different value per lane (lane 0–5: 1k, 2.2k, 4.7k, 10k, 22k, 47k), in the slot at the back of the hat, leads under the two bottom magnets |
+| ~1 m | ~5 m | PTFE 4×2 mm bowden | One continuous tube from spool/buffer, through the hat, ending 20.5 mm below it as the stinger. Length depends on spool location |
 
 ## Hat rack (per lane)
 
-| Per lane | ×5 | Item | Specification / notes | € each | € ×5 |
-|---:|---:|---|---|---:|---:|
-| 1 | 5 | `hat_rack` | Printed ABS/ASA | — | — |
-| 2 | 10 | Magnet Ø6×3 mm, axial, N42SH | Snap magnets in the plate, 0.5 mm below the face, facing the hat's front-face magnets. Push them out from the back through the Ø1 eject holes (pin or paper clip) | 0.55 | 5.50 |
-| 2 | 10 | M3×8 socket head screw | ISO 4762 / DIN 912. Heads sit fully recessed in counterbores, left and right of the bowden tube | 0.05 | 0.50 |
-| (1) | (5) | `hat_rack_spacer_12` or `_17` | Optional, printed ABS/ASA. Moves the rack 12 / 17 mm off the extrusion. With it, use M3×20 (12) or M3×25 (17) instead of M3×8 | — | — |
-| 2 | 10 | M3 roll-in T-nut for 2020 | Standard Voron part, top front extrusion | 0.10 | 1.00 |
+| Per lane | ×5 | Item | Specification / notes |
+|---:|---:|---|---|
+| 1 | 5 | `hat_rack` | Printed ABS/ASA |
+| 2 | 10 | Magnet Ø6×3 mm, axial, N42SH | Snap magnets in the plate, 0.5 mm below the face, facing the hat's front-face magnets. Push them out from the back through the Ø1 eject holes (pin or paper clip) |
+| 2 | 10 | M3×8 socket head screw | ISO 4762 / DIN 912. Heads sit fully recessed in counterbores, left and right of the bowden tube |
+| (1) | (5) | `hat_rack_spacer_12` or `_17` | Optional, printed ABS/ASA. Moves the rack 12 / 17 mm off the extrusion. With it, use M3×20 (12) or M3×25 (17) instead of M3×8 |
+| 2 | 10 | M3 roll-in T-nut for 2020 | Standard Voron part, top front extrusion |
 
 ## PTFE rail clamp (once, optional, 8 tubes or 4 with `_4x`)
 
-| Qty | Item | Specification / notes | € each | € total |
-|---:|---|---|---:|---:|
-| 1 | `ptfe_rail_clamp` | Printed ABS/ASA, one piece. Foot on top of a 2020 extrusion, tubes vertical outside the frame | — | — |
-| 2 | M3×12 socket head screw | ISO 4762 / DIN 912. Foot into the T-nuts | 0.05 | 0.10 |
-| 2 | M3 roll-in T-nut for 2020 | Standard Voron part | 0.10 | 0.20 |
+| Qty | Item | Specification / notes |
+|---:|---|---|
+| 1 | `ptfe_rail_clamp` | Printed ABS/ASA, one piece. Foot on top of a 2020 extrusion, tubes vertical outside the frame |
+| 2 | M3×12 socket head screw | ISO 4762 / DIN 912. Foot into the T-nuts |
+| 2 | M3 roll-in T-nut for 2020 | Standard Voron part |
 
 ## Printed parts
 
@@ -61,18 +60,7 @@ Prices checked September 2026 at the sources linked at the bottom, converted rou
 | (1) | `ptfe_rail_clamp` | As exported: foot on the bed, bores vertical, no supports | ~19 |
 | (1) | `ptfe_rail_clamp_4x` | 4-tube version, same orientation | ~12 |
 
-About **85 g of ABS/ASA** (without spacers) in total (model volume × 1.05 g/cm³ × 0.7 fill factor; use your slicer's figure), about €2 of filament. Voron print settings: 0.4 nozzle, 0.2 layers, 4 walls, 5 top/bottom, 40 % infill.
-
-## Cost summary
-
-| | € |
-|---|---:|
-| Toolhead (once, excluding the D2F switch and the FilamATrix parts) | 1.80 |
-| Each lane, including 1 m bowden | 7.95 |
-| PTFE rail clamp (optional) | 0.30 |
-| Filament | 2.00 |
-| **Total, 5 lanes with new bowden** | **~44 + switch** |
-| **Total, 5 lanes reusing your tubes** | **~29 + switch** |
+About **85 g of ABS/ASA** (without spacers) in total (model volume × 1.05 g/cm³ × 0.7 fill factor; use your slicer's figure). Voron print settings: 0.4 nozzle, 0.2 layers, 4 walls, 5 top/bottom, 40 % infill.
 
 ## Tools
 
@@ -102,11 +90,3 @@ About **85 g of ABS/ASA** (without spacers) in total (model volume × 1.05 g/cm�
 - **Macros:** `variable_nip_to_sensor` is 19.85 and `variable_nip_to_cut` 38.35. Measure `variable_nozzle_to_nip` on your hotend (gear contact line to nozzle tip, along the filament).
 - **PTFE rail clamp:** drop the T-nuts into the top slot of the extrusion, set the foot on top with the block over the outer edge and fix it with the two M3×12. Cut each tube square, chamfer its edge lightly and push it through its bore with a slight twist: it should slide through freely (4.50 mm bores, no friction band). If it doesn't, ream the bore with a 4.5 mm drill, or rebuild with a larger `BORE_D`. The tubes pass 5 mm outside the extrusion face (`OUTSET`): place the clamp between two panel clips, or raise `OUTSET` if your clips stick out further.
 - **Reused parts:** the rest of the Galileo 2 and the Stealthburner are stock, apart from the FilamATrix parts above.
-
-## Price sources
-
-- ECAS04: [Bondtech, Push-fit ECAS 4 mm](https://www.bondtech.se/product/push-fit-ecas-4mm/), [3DJake](https://www.3djake.com/bondtech/push-fit-ecas)
-- N42SH 6×3 magnet: [K&J Magnetics D42SH](https://www.kjmagnetics.com/d42sh-neodymium-high-temp-disc-magnet) (closest imperial size, 1/4" × 1/8")
-- PTFE tube: [Hotend.eu](https://www.hotend.eu/ptfe-tubes)
-- 5.5 mm steel balls: [50 pcs, 304 stainless (eBay)](https://www.ebay.com/itm/157089518424)
-- D2F switch: [Omron D2F-5 at DigiKey](https://www.digikey.com/en/products/detail/omron-electronics-inc-emc-div/D2F-5/8593136)
