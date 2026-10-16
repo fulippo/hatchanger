@@ -10,5 +10,5 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Added
 
 - First public release: parametric CAD (front body, hats, racks, spacers, stinger gauge, PTFE
-  rail clamp), Klipper macros, optional hat-ID reader, AFC unit driver, one-command installer
+  rail clamp), Klipper macros, AFC unit driver, one-command installer
   and integration tests.

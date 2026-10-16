@@ -77,7 +77,6 @@ The full walkthrough is in [docs/INSTALL.md](docs/INSTALL.md).
 | [Commands](docs/COMMANDS.md) | Reference for every `HAT_*` macro |
 | [Bill of materials](docs/BOM.md) | Hardware, print settings, assembly notes |
 | [AFC integration](docs/AFC.md) | Running HatChanger as an Armored Turtle AFC unit |
-| [Hat ID](docs/HAT_ID.md) | Optional resistor-based hat identification |
 | [CAD](docs/CAD.md) | Part descriptions and rebuilding the models |
 | [Roadmap](ROADMAP.md) | Known limitations and planned work |
 
