@@ -5,6 +5,8 @@ Parts
   front_body_hatchanger : the FilamATrix G2E front body (cutter insert, after-gears sensor, arm
                    clearance) with our top: raised flat interface pad, magnets, 2 dowel pins,
                    cone socket for the stinger. Stock G2E board mount (any board that fits it).
+  main_body_hatchanger_cw2 : the same interface on the FilamATrix Clockwork 2 main body
+                   (--extruder cw2, cw2_profile()): 5 mm higher to bridge the CW2 latch, same hats.
   hat            : ECAS04 on top, continuous 4x2 bowden through it (the stinger), V-ridge rails
                    with a tapered nose, magnets; locates on the dowels.
   stinger_gauge  : jig that sets how far the bowden sticks out of the hat.
@@ -32,6 +34,7 @@ from pathlib import Path
 import math
 import cadquery as cq
 
+# G2E frame numbers (defaults of P.axis_y / P.nip_z / P.seat_bottom_z; the CW2 profile overrides them)
 AXIS_Y = 0.4          # filament axis Y in the G2E STEP frame
 NIP_Z = 100.25
 SEAT_BOTTOM_Z = 109.82
@@ -39,6 +42,15 @@ SEAT_BOTTOM_Z = 109.82
 
 @dataclass
 class P:
+    # ---- extruder profile -------------------------------------------------------------------
+    # "g2e" = Galileo 2 (FilamATrix G2E front body), "cw2" = Clockwork 2 (FilamATrix CW2 main body).
+    # Use P() for G2E and cw2_profile() for CW2: the hat, rack and gauge come out identical, only the
+    # head side changes (interface height, axis, seat depth).
+    extruder: str = "g2e"
+    axis_y: float = AXIS_Y          # filament axis Y in the extruder STEP frame
+    nip_z: float = NIP_Z            # drive gear contact line
+    seat_bottom_z: float = SEAT_BOTTOM_Z   # bottom of the 4.6 seat (bowden end + stinger_gap)
+
     # ---- interface ----------------------------------------------------------------------
     z_if: float = 130.8            # interface plane in G2E frame (just above the sloped top)
     pad_x: float = 11.2            # pad half-width (cable_cover starts at x = 11.7)
@@ -122,6 +134,33 @@ class P:
     board_relief_boxes: tuple = ((21.0, 35.0, -8.5, 2.0, 75.0, 100.0, 0.0),
                                  (15.5, 35.0, -8.5, 2.0, 100.0, 125.0, -0.807))
     board_relief_edge_y: float = -0.1
+
+    # ---- Clockwork 2 base (cw2_profile) ----------------------------------------------------
+    # Built on the FilamATrix CW2 main body (GPL-3.0, thunderkeys), taken from the CW2 branch of
+    # "Stealthburner_FilamATrix.step" (already on the axis: filament at x = y = 0). Dual-switch body:
+    # pre-gear D2F (ball at z 99.13) and after-gears D2F (ball at z 76.19), both kept. Its PTFE runs
+    # 4.2 down to z 106, then 2.4 to the gears. The top is 130.19; the CW2 latch reaches 130.93
+    # behind the axis (x <= -5.1, y >= 6.8), under the -X magnet: the interface goes up to clear it.
+    cw2_body_name: str = "Main_Body_Dual_Switch:1"
+    cw2_keepout_names: tuple = ("[a]_latch_ecas v1:1", "Cable_Cover_EBB v1:1", "Cover_w_Sensor v1:1")
+    cw2_clear: float = 0.4          # added material stays this far from the latch and the covers
+    cw2_latch_slide: float = 8.0    # latch keep-out runs this far past the pad towards +Y (the latch
+                                    #   goes in from the back, before the motor plate)
+    cw2_pad_z0: float = 128.0       # pad block bottom (overlaps the stock top; the SB shell ends
+                                    #   at 127.56 in front of it)
+    cw2_ecas_fill: tuple = (4.7, 124.5)    # (r, z0): stock ECAS pocket filled up to the interface
+    cw2_bore_fill: tuple = (2.15, 104.8)   # (r, z0): stock 4.2 PTFE channel filled, z 104.8 .. 125
+    cw2_guide_d: float = 2.4        # filament guide from the seat down into the stock 2.4 bore
+    cw2_guide_z0: float = 104.0
+    cw2_screw_xz: tuple = (3.56, 114.93)   # CW2 M3x20 along Y next to the channel: kept out of the fill
+    cw2_screw_d: float = 3.4
+    # STL: OCC meshes a few stock faces of the CW2 body (low down, z 66-73) with gaps, whatever the
+    # deflection. Below cw2_splice_z (nothing changed there) the STL uses FilamATrix's own
+    # main_body_clockwork2_dual_switch.stl instead, mapped onto the CW2 frame: STEP axes = STL axes
+    # (cw2_stl_axes) x cw2_stl_signs, then aligned on the bounding box.
+    cw2_splice_z: float = 103.13
+    cw2_stl_axes: tuple = (0, 2, 1)
+    cw2_stl_signs: tuple = (1, 1, -1)
 
     # ---- stinger spine (clip-on stiffener for the stinger) ---------------------------------
     spine_groove_r: float = 2.0     # = PTFE radius: grips without play
@@ -301,11 +340,11 @@ class P:
 
     @property
     def stinger_len(self):
-        return self.z_if - SEAT_BOTTOM_Z - self.stinger_gap
+        return self.z_if - self.seat_bottom_z - self.stinger_gap
 
     @property
     def if_to_nip(self):
-        return self.z_if - NIP_Z
+        return self.z_if - self.nip_z
 
 
 def box(x0, x1, y0, y1, z0, z1):
@@ -377,38 +416,19 @@ def seat_exit_tool(p: P) -> cq.Workplane:
     """Cone from the seat (slightly above its bottom) to just below the stock 2.1 hole diameter,
     so the cone crosses the stock bore instead of sharing faces with it."""
     ta = math.tan(math.radians(p.seat_exit_angle))
-    top_z, top_r = SEAT_BOTTOM_Z + 0.3, p.seat_d / 2 + 0.3 * ta
+    top_z, top_r = p.seat_bottom_z + 0.3, p.seat_d / 2 + 0.3 * ta
     bot_r = 0.95                                          # < 1.05 stock bore radius
     bot_z = top_z - (top_r - bot_r) / ta
-    return (cq.Workplane("XY").workplane(offset=bot_z).center(0, AXIS_Y).circle(bot_r)
+    return (cq.Workplane("XY").workplane(offset=bot_z).center(0, p.axis_y).circle(bot_r)
             .workplane(offset=top_z - bot_z).circle(top_r).loft())
 
 
-def front_body_hatchanger(p: P, stock: cq.Shape, g2_body: cq.Shape = None) -> cq.Workplane:
-    """`stock` = the FilamATrix front body, already moved onto the G2E frame (load_fmx_body).
-    `g2_body` = the stock G2E front_body, used to fill FilamATrix's unused pre-gear switch pocket."""
-    ay = AXIS_Y
-    body = cq.Workplane("XY").add(stock)
-    if g2_body is not None:
-        for x0, x1, y0, y1, z0, z1 in p.fmx_fill_boxes:
-            body = body.union(cq.Workplane("XY").add(g2_body).intersect(box(x0, x1, y0, y1, z0, z1)),
-                              clean=False)
-    # 0. close FilamATrix's pre-gear sensor ball channel, its PTFE seat and ECAS pocket around the
-    #    axis; our seat, socket and lead-in are cut again below
-    fill = cyl_z(2 * p.fmx_fill_r, p.fmx_fill_z1, p.z_if + 2 - p.fmx_fill_z1, y=ay)
-    low = cyl_z(2 * p.fmx_fill_r, p.fmx_fill_z0, p.fmx_fill_z1 - p.fmx_fill_z0 + 0.01, y=ay)
-    low = low.intersect(box(-p.fmx_fill_r - 1, p.fmx_fill_x, ay - p.fmx_fill_r - 1, ay + p.fmx_fill_r + 1,
-                            p.fmx_fill_z0 - 1, p.fmx_fill_z1 + 1))
-    body = body.union(fill.union(low), clean=False)
-
-    # 1. flat interface pad (built inside the same print layers as the body: no supports)
-    pad = box(-p.pad_x, p.pad_x, p.pad_y0, p.pad_y1, p.z_if - p.pad_depth - 1.0, p.z_if)
-    body = body.union(pad, clean=False)
-    # trim anything of the stock top that pokes above the interface plane inside the pad
-    body = body.cut(box(-p.pad_x, p.pad_x, p.pad_y0, p.pad_y1, p.z_if, p.z_if + 5), clean=False)
-
+def _cut_seat(p: P, body: cq.Workplane) -> cq.Workplane:
+    """4.6 seat from p.seat_bottom_z to the interface plane, cone socket (or funnel) and the
+    shallow exit cone into the guide bore below. Shared by every extruder profile."""
+    ay = p.axis_y
     # 2. PTFE seat extended to the interface plane + lead-in cone
-    body = body.cut(cyl_z(p.seat_d, SEAT_BOTTOM_Z, p.z_if - SEAT_BOTTOM_Z + 1, y=ay), clean=False)
+    body = body.cut(cyl_z(p.seat_d, p.seat_bottom_z, p.z_if - p.seat_bottom_z + 1, y=ay), clean=False)
     if cone_style(p):
         body = body.cut(cone_socket_tool(p), clean=False)
     else:
@@ -421,17 +441,13 @@ def front_body_hatchanger(p: P, stock: cq.Shape, g2_body: cq.Shape = None) -> cq
     # all that holds the filament in the hat, so it gets pushed back up otherwise)
     body = body.cut(seat_exit_tool(p), clean=False)
 
-    # 2b. D2F screws: close FilamATrix's through holes, cut counterbore + pilot
-    if p.sw_cb:
-        y0, y1 = p.sw_front_y, p.sw_pocket_front_y
-        for x, z in p.sw_screw_xz:
-            # FilamATrix's hole is ~Ø5 through the whole wall: plug it flush with both faces
-            plug = cq.Workplane("XZ").circle(p.sw_plug_r).extrude(-(y1 - y0)).translate((x, y0, z))
-            body = body.union(plug, clean=False)
-            cb = cq.Workplane("XZ").circle(p.sw_cb_d / 2).extrude(-(p.sw_cb_depth + 0.5)).translate((x, y0 - 0.5, z))
-            pilot = cq.Workplane("XZ").circle(p.sw_pilot_d / 2).extrude(-(y1 - y0 + 0.4)).translate((x, y0 - 0.2, z))
-            body = body.cut(cb.union(pilot), clean=False)
+    return body
 
+
+def _cut_interface(p: P, body: cq.Workplane) -> cq.Workplane:
+    """Magnet pockets, dowel holes, hat-ID wire channel (and the old spine slot), all relative to
+    the filament axis and the interface plane. Shared by every extruder profile."""
+    ay = p.axis_y
     # 3. magnets and dowel pins
     mx, my = p.magnet_xy
     px, py = p.pin_xy
@@ -453,6 +469,46 @@ def front_body_hatchanger(p: P, stock: cq.Shape, g2_body: cq.Shape = None) -> cq
         body = body.cut(ch, clean=False)
     if p.spine and not cone_style(p):
         body = body.cut(spine_slot_tool(p), clean=False)
+    return body
+
+
+def front_body_hatchanger(p: P, stock: cq.Shape, g2_body: cq.Shape = None) -> cq.Workplane:
+    """`stock` = the FilamATrix front body, already moved onto the G2E frame (load_fmx_body).
+    `g2_body` = the stock G2E front_body, used to fill FilamATrix's unused pre-gear switch pocket."""
+    ay = p.axis_y
+    body = cq.Workplane("XY").add(stock)
+    if g2_body is not None:
+        for x0, x1, y0, y1, z0, z1 in p.fmx_fill_boxes:
+            body = body.union(cq.Workplane("XY").add(g2_body).intersect(box(x0, x1, y0, y1, z0, z1)),
+                              clean=False)
+    # 0. close FilamATrix's pre-gear sensor ball channel, its PTFE seat and ECAS pocket around the
+    #    axis; our seat, socket and lead-in are cut again below
+    fill = cyl_z(2 * p.fmx_fill_r, p.fmx_fill_z1, p.z_if + 2 - p.fmx_fill_z1, y=ay)
+    low = cyl_z(2 * p.fmx_fill_r, p.fmx_fill_z0, p.fmx_fill_z1 - p.fmx_fill_z0 + 0.01, y=ay)
+    low = low.intersect(box(-p.fmx_fill_r - 1, p.fmx_fill_x, ay - p.fmx_fill_r - 1, ay + p.fmx_fill_r + 1,
+                            p.fmx_fill_z0 - 1, p.fmx_fill_z1 + 1))
+    body = body.union(fill.union(low), clean=False)
+
+    # 1. flat interface pad (built inside the same print layers as the body: no supports)
+    pad = box(-p.pad_x, p.pad_x, p.pad_y0, p.pad_y1, p.z_if - p.pad_depth - 1.0, p.z_if)
+    body = body.union(pad, clean=False)
+    # trim anything of the stock top that pokes above the interface plane inside the pad
+    body = body.cut(box(-p.pad_x, p.pad_x, p.pad_y0, p.pad_y1, p.z_if, p.z_if + 5), clean=False)
+
+    body = _cut_seat(p, body)
+
+    # 2b. D2F screws: close FilamATrix's through holes, cut counterbore + pilot
+    if p.sw_cb:
+        y0, y1 = p.sw_front_y, p.sw_pocket_front_y
+        for x, z in p.sw_screw_xz:
+            # FilamATrix's hole is ~Ø5 through the whole wall: plug it flush with both faces
+            plug = cq.Workplane("XZ").circle(p.sw_plug_r).extrude(-(y1 - y0)).translate((x, y0, z))
+            body = body.union(plug, clean=False)
+            cb = cq.Workplane("XZ").circle(p.sw_cb_d / 2).extrude(-(p.sw_cb_depth + 0.5)).translate((x, y0 - 0.5, z))
+            pilot = cq.Workplane("XZ").circle(p.sw_pilot_d / 2).extrude(-(y1 - y0 + 0.4)).translate((x, y0 - 0.2, z))
+            body = body.cut(cb.union(pilot), clean=False)
+
+    body = _cut_interface(p, body)
     if p.board_relief > 0:
         cut = None
         for x0, x1, y0, y1, z0, z1, dz in p.board_relief_boxes:
@@ -464,6 +520,167 @@ def front_body_hatchanger(p: P, stock: cq.Shape, g2_body: cq.Shape = None) -> cq
             cut = inner if cut is None else cut.union(inner)
         body = body.cut(cut, clean=False)
     # NOTE: clean=False everywhere - OCC face merging breaks this imported solid
+    return body
+
+
+def cw2_profile(**kw) -> P:
+    """Clockwork 2 profile. The interface plane goes 5 mm up (130.8 -> 135.8) to bridge the CW2
+    latch, and the seat bottom moves with it, so stinger_len (20.48) and therefore the hat, rack and
+    gauge stay identical to the G2E ones."""
+    z_if = kw.pop("z_if", 135.8)
+    g2e = P()
+    d = dict(extruder="cw2", axis_y=0.0, nip_z=86.31, z_if=z_if,
+             seat_bottom_z=z_if - g2e.stinger_len - g2e.stinger_gap,
+             pad_y0=-8.2,              # flush with the CW2 front face (the body prints on it)
+             pad_y1=11.6, sensor_z=76.19, sw_cb=False, board_relief=0.0)
+    d.update(kw)
+    return P(**d)
+
+
+def _read_step(step_path):
+    """[(instance name, shape in assembly coordinates)] for every leaf of a STEP assembly."""
+    from OCP.STEPCAFControl import STEPCAFControl_Reader
+    from OCP.TDocStd import TDocStd_Document
+    from OCP.XCAFDoc import XCAFDoc_DocumentTool
+    from OCP.TCollection import TCollection_ExtendedString
+    from OCP.TDF import TDF_LabelSequence, TDF_Label
+    from OCP.TDataStd import TDataStd_Name
+    from OCP.TopLoc import TopLoc_Location
+
+    doc = TDocStd_Document(TCollection_ExtendedString("step"))
+    r = STEPCAFControl_Reader(); r.SetNameMode(True)
+    r.ReadFile(str(step_path)); r.Transfer(doc)
+    st = XCAFDoc_DocumentTool.ShapeTool_s(doc.Main())
+
+    def name(l):
+        a = TDataStd_Name()
+        return a.Get().ToExtString() if l.FindAttribute(TDataStd_Name.GetID_s(), a) else "?"
+
+    parts = []
+
+    def walk(l, loc, path):
+        if st.IsReference_s(l):
+            ref = TDF_Label(); st.GetReferredShape_s(l, ref)
+            walk(ref, loc.Multiplied(st.GetLocation_s(l)), path + (name(l),)); return
+        if st.IsAssembly_s(l):
+            seq = TDF_LabelSequence(); st.GetComponents_s(l, seq)
+            for i in range(1, seq.Length() + 1):
+                walk(seq.Value(i), loc, path)
+            return
+        parts.append((path, cq.Shape.cast(st.GetShape_s(l).Moved(loc))))
+
+    roots = TDF_LabelSequence(); st.GetFreeShapes(roots)
+    for i in range(1, roots.Length() + 1):
+        walk(roots.Value(i), TopLoc_Location(), (name(roots.Value(i)),))
+    return parts
+
+
+CW2_BRANCH = "Clockwork2 FilamATrix:1"
+
+
+def load_cw2(path, p: P):
+    """(main body, keep-out parts, [(name, shape)] of the rest of the CW2 toolhead) from
+    "Stealthburner_FilamATrix.step" (slow: ~220 MB), or from the folder of .brep files a previous
+    build cached next to it (cw2_cache/)."""
+    path = Path(path)
+    cache = path if path.is_dir() else path.with_name("cw2_cache")
+    if not path.is_dir():
+        cache.mkdir(exist_ok=True)
+        n = 0
+        for i, (pth, s) in enumerate(_read_step(path)):
+            if CW2_BRANCH in pth:
+                s.exportBrep(str(cache / f"{n:03d}__{pth[-1].replace('/', '_')}.brep")); n += 1
+        print(f"cached {n} CW2 parts in {cache}")
+    parts = []
+    for f in sorted(cache.glob("*.brep")):
+        parts.append((f.stem.split("__", 1)[1], cq.Shape.importBrep(str(f))))
+    body = next(s for n, s in parts if n == p.cw2_body_name)
+    keep = [s for n, s in parts if n in p.cw2_keepout_names]
+    if len(keep) != len(p.cw2_keepout_names):
+        raise ValueError(f"CW2 keep-out parts not all found: {p.cw2_keepout_names}")
+    return body, keep, parts
+
+
+def _upper_envelope(shape: cq.Shape, region: cq.Workplane, clear: float, y1: float) -> cq.Workplane:
+    """Everything under `shape`'s top surface (seen along Y), grown by `clear` up and sideways,
+    as a prism from the shape's front (- clear) back to y1. Fills the shape's holes and
+    undercuts, so nothing added can end up inside them, and the shape can slide out towards +Y."""
+    from OCP.BRepAlgoAPI import BRepAlgoAPI_Section
+    from OCP.gp import gp_Pln, gp_Pnt, gp_Dir
+    loc = shape.intersect(region.val())
+    if loc.Volume() < 1e-3:
+        return None
+    bb, rb = loc.BoundingBox(), region.val().BoundingBox()
+    step, top = 0.25, {}
+    ny = max(2, int((bb.ymax - bb.ymin) / 0.5) + 1)
+    for j in range(ny):
+        y = bb.ymin + 1e-3 + (bb.ymax - bb.ymin - 2e-3) * j / (ny - 1)
+        sec = BRepAlgoAPI_Section(loc.wrapped, gp_Pln(gp_Pnt(0, y, 0), gp_Dir(0, 1, 0))); sec.Build()
+        for e in cq.Shape.cast(sec.Shape()).Edges():
+            for t in range(41):
+                v = e.positionAt(t / 40)
+                k = round(v.x / step)
+                top[k] = max(top.get(k, -1e9), v.z)
+    ks = range(min(top) - int(clear / step) - 1, max(top) + int(clear / step) + 2)
+    w = int(math.ceil(clear / step))
+    zt = {k: max(top.get(i, -1e9) for i in range(k - w, k + w + 1)) + clear for k in ks}
+    pts = [(k * step, zt[k]) for k in ks if zt[k] > -1e8]
+    z0 = rb.zmin - 1
+    poly = [(pts[0][0], z0)] + pts + [(pts[-1][0], z0)]
+    y0 = bb.ymin - clear
+    return (cq.Workplane("XZ", origin=(0, y0, 0)).polyline(poly).close().extrude(-(y1 - y0)))
+
+
+def _cw2_keepout(p: P, keep, region) -> cq.Workplane:
+    """Latch: its upper envelope (_upper_envelope) + cw2_clear, open towards +Y. Covers: grown by
+    cw2_clear (union of shifted copies). Everything clipped to `region` first."""
+    c, out = p.cw2_clear, None
+    shifts = [(0, 0, 0)] + [tuple(c * s if j == a else 0 for j in range(3))
+                            for a in range(3) for s in (-1, 1)]
+    rb = region.val().BoundingBox()
+    for k, shp in enumerate(keep):
+        if k == 0:                                    # the latch
+            w = _upper_envelope(shp, region, c, rb.ymax + p.cw2_latch_slide)
+            if w is not None:
+                out = w if out is None else out.union(w, clean=False)
+            continue
+        loc = cq.Workplane("XY").add(shp).intersect(region)
+        if not loc.vals() or loc.val().Volume() < 1e-3:
+            continue
+        for sx, sy, sz in shifts:
+            w = loc.translate((sx, sy, sz))
+            out = w if out is None else out.union(w, clean=False)
+    return out
+
+
+def front_body_cw2(p: P, stock: cq.Shape, keep) -> cq.Workplane:
+    """HatChanger top on the FilamATrix CW2 main body (CW2 frame). `keep` = the CW2 latch and cable
+    covers: everything added stays cw2_clear away from them."""
+    ay = p.axis_y
+    body = cq.Workplane("XY").add(stock)
+    # 0. fill the stock ECAS pocket and 4.2 PTFE channel (seat, socket and guide are re-cut below)
+    er, ez = p.cw2_ecas_fill
+    br, bz = p.cw2_bore_fill
+    #    (both stay > 2 mm from the latch: no keep-out needed, and none may leave voids in the pocket)
+    fill = cyl_z(2 * er, ez, p.z_if - ez, y=ay).union(cyl_z(2 * br, bz, ez - bz + 0.5, y=ay))
+    # 1. interface pad: from the stock top up to the interface plane, bridging over the latch
+    pad = box(-p.pad_x, p.pad_x, p.pad_y0, p.pad_y1, p.cw2_pad_z0, p.z_if)
+    region = box(-p.pad_x - 2, p.pad_x + 2, p.pad_y0 - 2, p.pad_y1 + 2, p.cw2_pad_z0 - 6, p.z_if + 2)
+    ko = _cw2_keepout(p, keep, region)
+    if ko is not None:
+        pad = pad.cut(ko, clean=False)
+    add = fill.union(pad, clean=False)
+    sx, sz = p.cw2_screw_xz                     # CW2 M3 along Y next to the channel: the fill stays
+    add = add.cut(cq.Workplane("XZ").circle(p.cw2_screw_d / 2 + 0.05).extrude(-40.0)   # out of its hole
+                  .translate((sx, ay - 20.0, sz)), clean=False)
+    front_body_cw2.added = add                  # kept for the clearance checks
+    body = body.union(add, clean=False)
+    # 2. guide bore from the seat down into the stock 2.4 channel, then seat / socket / exit cone
+    body = body.cut(cyl_z(p.cw2_guide_d, p.cw2_guide_z0, p.seat_bottom_z - p.cw2_guide_z0 + 0.5, y=ay),
+                    clean=False)
+    body = _cut_seat(p, body)
+    # 3. magnets, dowels, hat-ID wire channel
+    body = _cut_interface(p, body)
     return body
 
 
@@ -577,16 +794,16 @@ def cone_socket_tool(p: P) -> cq.Workplane:
     k = (r0 - r1) / p.cone_len                                     # radius change per mm
     zb = zt - p.cone_len - p.cone_depth_extra
     rb = r1 - k * p.cone_depth_extra
-    sock = (cq.Workplane("XY").workplane(offset=zb).center(0, AXIS_Y).circle(rb)
+    sock = (cq.Workplane("XY").workplane(offset=zb).center(0, p.axis_y).circle(rb)
             .workplane(offset=zt + 1 - zb).circle(r0 + k).loft())
     rs = p.seat_d / 2 - 0.05
     if p.cone_tail > p.cone_len:
         rt = p.cone_d1 / 2 + p.cone_tail_clear
         zt_b = zt - p.cone_tail - p.cone_depth_extra
-        sock = sock.union(cyl_z(2 * rt, zt_b, zb - zt_b + 0.5, y=AXIS_Y))
+        sock = sock.union(cyl_z(2 * rt, zt_b, zb - zt_b + 0.5, y=p.axis_y))
         zb, rb = zt_b, rt
     hl = (rb - rs) / math.tan(math.radians(p.cone_seat_angle))
-    lead = (cq.Workplane("XY").workplane(offset=zb - hl).center(0, AXIS_Y).circle(rs)
+    lead = (cq.Workplane("XY").workplane(offset=zb - hl).center(0, p.axis_y).circle(rs)
             .workplane(offset=hl + 0.01).circle(rb).loft())
     return sock.union(lead)
 
@@ -630,19 +847,19 @@ def spine_slot_tool(p: P) -> cq.Workplane:
     of the mouth is not grown: the seat funnel already opens there, and the magnets are close."""
     c = p.spine_head_clear
     zt = p.z_if
-    slot = _spine_envelope(p, c, -p.spine_below - c, 1.0).translate((0, AXIS_Y, zt))
+    slot = _spine_envelope(p, c, -p.spine_below - c, 1.0).translate((0, p.axis_y, zt))
     r = p.spine_groove_r
     hw = r + p.spine_lip_t + c
     y0 = -math.sqrt(max(r * r - (p.spine_opening / 2) ** 2, 0.0)) - c
     y1 = r + p.spine_back_t + c
     gx, gb, h = p.spine_mouth_x, p.spine_mouth_back, p.spine_mouth_h
-    bot = cq.Workplane("XY").workplane(offset=zt - h).center(0, AXIS_Y + (y0 + y1) / 2).rect(2 * hw, y1 - y0)
+    bot = cq.Workplane("XY").workplane(offset=zt - h).center(0, p.axis_y + (y0 + y1) / 2).rect(2 * hw, y1 - y0)
     mouth = (bot.workplane(offset=h + 0.01).center(0, gb / 2)
              .rect(2 * (hw + gx), y1 - y0 + gb).loft())
     # funnel floor: the slot is wider than the seat, so a curved tip could land on a flat floor
     # here. Loft the slot outline down into the seat (removes material only between the two).
     zf = zt - p.spine_below - c
-    floor = (cq.Workplane("XY").workplane(offset=zf - p.spine_floor_h).center(0, AXIS_Y)
+    floor = (cq.Workplane("XY").workplane(offset=zf - p.spine_floor_h).center(0, p.axis_y)
              .circle(p.seat_d / 2 - 0.1)
              .workplane(offset=p.spine_floor_h + 0.01).center(0, (y0 + y1) / 2).rect(2 * hw, y1 - y0)
              .loft())
@@ -672,7 +889,7 @@ def dowel_pins(p: P):
     w = cq.Workplane("XY")
     for s in (-1, 1):
         w = w.add(cyl_z(p.pin_d, p.z_if - p.pin_depth, p.pin_depth + p.pin_protrusion,
-                        x=s * px, y=AXIS_Y + py).val())
+                        x=s * px, y=p.axis_y + py).val())
     return w
 
 
@@ -1153,16 +1370,27 @@ def export_stl(w, path, deflection=0.01, angle=0.1):
     """Watertight STL export. The official G2E STEP has cone and planar faces that OCC's mesher
     skips (the plain exporter left ~3300 open edges and ~0.8 % of the surface missing). Converting
     to NURBS first and meshing at 0.01 mm triangulates every face; the only leftover is a
-    zero-length seam edge, removed with the degenerate triangles."""
+    zero-length seam edge, removed with the degenerate triangles. Some faces (a chamfer cone of the
+    CW2 body) still come out empty at one deflection and fine at another: if any face has no
+    triangles, the mesh is redone at the next deflection in the list."""
     from OCP.BRepBuilderAPI import BRepBuilderAPI_NurbsConvert
     from OCP.BRepMesh import BRepMesh_IncrementalMesh
     from OCP.IMeshTools import IMeshTools_Parameters
     from OCP.StlAPI import StlAPI_Writer
+    from OCP.BRep import BRep_Tool
+    from OCP.TopLoc import TopLoc_Location
     shape = w.val() if hasattr(w, "val") else w
-    sh = BRepBuilderAPI_NurbsConvert(shape.wrapped, True).Shape()
-    prm = IMeshTools_Parameters()
-    prm.Deflection, prm.Angle, prm.InParallel, prm.AllowQualityDecrease = deflection, angle, True, True
-    BRepMesh_IncrementalMesh(sh, prm)
+    for d in (deflection, deflection / 2, deflection * 2, deflection * 0.8):
+        sh = BRepBuilderAPI_NurbsConvert(shape.wrapped, True).Shape()
+        prm = IMeshTools_Parameters()
+        prm.Deflection, prm.Angle, prm.InParallel, prm.AllowQualityDecrease = d, angle, True, True
+        BRepMesh_IncrementalMesh(sh, prm)
+        empty = sum(1 for f in cq.Shape.cast(sh).Faces()
+                    if (BRep_Tool.Triangulation_s(f.wrapped, TopLoc_Location()) is None
+                        or BRep_Tool.Triangulation_s(f.wrapped, TopLoc_Location()).NbTriangles() == 0))
+        if empty == 0:
+            break
+        print(f"{path}: {empty} face(s) not meshed at deflection {d:g}, retrying")
     wr = StlAPI_Writer(); wr.ASCIIMode = False; wr.Write(sh, str(path))
     try:
         import trimesh
@@ -1173,6 +1401,54 @@ def export_stl(w, path, deflection=0.01, angle=0.1):
         t.export(str(path))
     except ImportError:
         print("trimesh not installed: STL written without the final clean-up")
+
+
+def export_stl_spliced(w, path, ref_stl, stock: cq.Shape, p: P):
+    """STL of `w` above p.cw2_splice_z (meshed here) + the reference STL below it (manifold3d
+    union). Falls back to export_stl if the reference is missing or doesn't match `stock`."""
+    import tempfile
+    try:
+        import numpy as np, trimesh, manifold3d as m3
+    except ImportError:
+        print("manifold3d / trimesh not installed: plain STL export"); return export_stl(w, path)
+    ref_stl = Path(ref_stl) if ref_stl else None
+    if not ref_stl or not ref_stl.exists():
+        print(f"reference STL {ref_stl} not found: plain STL export"); return export_stl(w, path)
+    ref = trimesh.load(str(ref_stl))
+    v = ref.vertices[:, list(p.cw2_stl_axes)] * np.array(p.cw2_stl_signs, float)
+    sb = stock.BoundingBox()
+    v = v - v.min(0) + np.array([sb.xmin, sb.ymin, sb.zmin])
+    size = np.array([sb.xlen, sb.ylen, sb.zlen])
+    ref = trimesh.Trimesh(v, ref.faces, process=True)
+    if np.linalg.det(np.eye(3)[list(p.cw2_stl_axes)] * np.array(p.cw2_stl_signs, float)[:, None]) < 0:
+        ref.invert()
+    if np.abs((v.max(0) - v.min(0)) - size).max() > 0.05 or abs(ref.volume / stock.Volume() - 1) > 0.002:
+        print(f"{ref_stl} does not match the CW2 STEP body: plain STL export"); return export_stl(w, path)
+    zc = p.cw2_splice_z
+    shape = w.val() if hasattr(w, "val") else w
+    top = shape.intersect(cq.Solid.makeBox(400, 400, 400, cq.Vector(-200, -200, zc)))
+    with tempfile.TemporaryDirectory() as d:
+        export_stl(top, Path(d) / "top.stl")
+        topm = trimesh.load(str(Path(d) / "top.stl"))
+
+    def man(t):
+        return m3.Manifold(m3.Mesh(vert_properties=np.asarray(t.vertices, np.float32),
+                                   tri_verts=np.asarray(t.faces, np.uint32)))
+    low = man(ref) ^ m3.Manifold.cube([400, 400, 400]).translate([-200, -200, zc - 400])
+    r = (low + man(topm)).to_mesh()
+    # the union leaves some vertices a few 1e-5 mm apart, which an STL reader merges into
+    # non-manifold edges: weld them on a 0.001 mm grid, drop the zero-volume slivers
+    out = trimesh.Trimesh(np.asarray(r.vert_properties[:, :3], float), r.tri_verts, process=False)
+    out.merge_vertices(digits_vertex=3)
+    out.update_faces(out.nondegenerate_faces()); out.update_faces(out.unique_faces())
+    out.remove_unreferenced_vertices()
+    parts = [b for b in out.split(only_watertight=False) if abs(b.volume) > 0.01]
+    if not topm.is_watertight or not parts:
+        print("spliced STL failed (top mesh not closed): plain STL export"); return export_stl(w, path)
+    out = trimesh.util.concatenate(parts)                # drops zero-volume slivers of the union
+    if not out.is_watertight:
+        print(f"WARNING: {path} is not watertight")
+    out.export(str(path))
 
 
 def build(g2_step, fmx, out="out", p: P = P()):
@@ -1203,7 +1479,7 @@ def build(g2_step, fmx, out="out", p: P = P()):
             w = w.rotate((0, 0, 0), (1, 0, 0), 180).translate((0, 0, p.cart_h))
         export(n, w)
 
-    to_g2 = (0, AXIS_Y, p.z_if)                      # part frame -> G2E frame
+    to_g2 = (0, p.axis_y, p.z_if)                      # part frame -> G2E frame
     skip = ("front_body", "ECAS", "cable_chain_3", "Collet")
     asm = cq.Assembly(name="g2e_hatchanger")
     for i, (n, s) in enumerate(g2parts):
@@ -1223,8 +1499,45 @@ def build(g2_step, fmx, out="out", p: P = P()):
 
     print(f"interface plane z = {p.z_if:.2f}  -> nip {p.if_to_nip:.2f} mm below it")
     print(f"stinger: bowden sticks out {p.stinger_len:.1f} mm below the hat (set it with stinger_gauge)")
-    print(f"sensor {NIP_Z - p.sensor_z:.2f} mm below the nip (macro nip_to_sensor)")
+    print(f"sensor {p.nip_z - p.sensor_z:.2f} mm below the nip (macro nip_to_sensor)")
     return parts, g2parts, fb
+
+
+def build_cw2(fmx, out="out", p: P = None, ref_stl=None):
+    """Clockwork 2 main body + a check assembly. The hat, rack, spacers and gauge are the G2E ones
+    (same stinger_len): build() exports them."""
+    p = p or cw2_profile()
+    g2e = P()
+    assert abs(p.stinger_len - g2e.stinger_len) < 1e-9, "CW2 profile changed the stinger length"
+    out = Path(out); out.mkdir(exist_ok=True)
+    stock, keep, cw2parts = load_cw2(fmx, p)
+    fb = front_body_cw2(p, stock, keep)
+    cq.exporters.export(fb, str(out / "main_body_hatchanger_cw2.step"))
+    # mesh the STEP as written (the in-memory solid of the boolean chain meshes with gaps)
+    fb_step = cq.importers.importStep(str(out / "main_body_hatchanger_cw2.step")).val()
+    export_stl_spliced(fb_step, out / "main_body_hatchanger_cw2.stl", ref_stl, stock, p)
+
+    to_cw2 = (0, p.axis_y, p.z_if)                   # part frame -> CW2 frame
+    hat = cartridge(p)
+    skip = ("Main_Body", "ECAS", "Collet", "Plunger", "Seal Retainer", "Grab Ring",
+            "Cover_w_Sensor")                         # (keep one of the two cable covers)
+    asm = cq.Assembly(name="cw2_hatchanger")
+    for i, (n, s) in enumerate(cw2parts):
+        if any(k in n for k in skip):
+            continue
+        asm.add(s, name=f"{i:03d}_{n}".replace(":", "_").replace("/", "_"),
+                color=cq.Color(0.35, 0.35, 0.38))
+    asm.add(fb, name="main_body_hatchanger_cw2", color=cq.Color(0.1, 0.1, 0.1))
+    asm.add(dowel_pins(p), name="dowels", color=cq.Color(0.8, 0.8, 0.85))
+    asm.add(hat.translate(to_cw2), name="cartridge", color=cq.Color(0.95, 0.4, 0.1))
+    asm.add(stinger(p).translate(to_cw2), name="stinger", color=cq.Color(0.97, 0.97, 0.97))
+    asm.export(str(out / "cw2_hatchanger_assembly.step"))
+
+    print(f"CW2: interface plane z = {p.z_if:.2f} ({p.z_if - g2e.z_if:+.2f} vs G2E) -> nip "
+          f"{p.if_to_nip:.2f} mm below it (G2E {g2e.if_to_nip:.2f})")
+    print(f"stinger {p.stinger_len:.2f} mm below the hat, as on G2E: same hats")
+    print(f"after-gears sensor {p.nip_z - p.sensor_z:.2f} mm below the nip (macro nip_to_sensor)")
+    return fb, stock, keep, cw2parts
 
 
 if __name__ == "__main__":
@@ -1238,5 +1551,14 @@ if __name__ == "__main__":
                          "folder), or the filamatrix_front_body.brep a previous build cached next to it")
     ap.add_argument("--logo", default="", help="SVG engraved on the chamber side of the hat rack")
     ap.add_argument("--out", default="out", help="output directory")
+    ap.add_argument("--cw2-stl", default="FilamATrix/STLs/Clockwork2/main_body_clockwork2_dual_switch.stl",
+                    help="cw2: FilamATrix's CW2 dual-switch main body STL, used for the unchanged lower "
+                         "part of the STL (OCC leaves gaps in a few of its faces)")
+    ap.add_argument("--extruder", choices=("g2e", "cw2"), default="g2e",
+                    help="g2e: every part (Galileo 2 front body, hat, rack, gauge, spacers); "
+                         "cw2: the Clockwork 2 main body + assembly only (the other parts are the same)")
     a = ap.parse_args()
-    build(a.g2_step, a.filamatrix, a.out, P(logo_svg=a.logo))
+    if a.extruder == "cw2":
+        build_cw2(a.filamatrix, a.out, cw2_profile(logo_svg=a.logo), a.cw2_stl)
+    else:
+        build(a.g2_step, a.filamatrix, a.out, P(logo_svg=a.logo))

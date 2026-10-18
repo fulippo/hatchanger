@@ -47,7 +47,8 @@ cuts the filament before each unload, so no tip forming is needed.
 ## Requirements
 
 - Voron 2.4 with a Stealthburner and a [Galileo 2](https://github.com/JaredC01/Galileo2) extruder
-  (stock G2E toolhead board mount)
+  (stock G2E toolhead board mount), or a Clockwork 2 with `main_body_hatchanger_cw2`
+  (experimental, see [docs/CAD.md](docs/CAD.md#clockwork-2))
 - The [FilamATrix](https://github.com/thunderkeys/FilamATrix) cutter, G2E version
   (HatChanger's `front_body_hatchanger` replaces its `front_body_g2e`)
 - An Omron D2F switch on a free toolhead board input, for the after-gears sensor
@@ -109,4 +110,5 @@ Issues and pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md).
 ## License
 
 HatChanger is released under the [GNU General Public License v3.0](LICENSE).
-`front_body_hatchanger` is derived from FilamATrix and Galileo 2, both GPL-3.0.
+`front_body_hatchanger` is derived from FilamATrix and Galileo 2, and `main_body_hatchanger_cw2`
+from FilamATrix's Clockwork 2 main body, all GPL-3.0.
