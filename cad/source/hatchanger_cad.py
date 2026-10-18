@@ -6,7 +6,7 @@ Parts
                    clearance) with our top: raised flat interface pad, magnets, 2 dowel pins,
                    cone socket for the stinger. Stock G2E board mount (any board that fits it).
   main_body_hatchanger_cw2 : the same interface on the FilamATrix Clockwork 2 main body
-                   (--extruder cw2, cw2_profile()): 5 mm higher to bridge the CW2 latch, same hats.
+                   (--extruder cw2, cw2_profile()): 5.5 mm higher to bridge the CW2 latch, same hats.
   hat            : ECAS04 on top, continuous 4x2 bowden through it (the stinger), V-ridge rails
                    with a tapered nose, magnets; locates on the dowels.
   stinger_gauge  : jig that sets how far the bowden sticks out of the hat.
@@ -524,10 +524,10 @@ def front_body_hatchanger(p: P, stock: cq.Shape, g2_body: cq.Shape = None) -> cq
 
 
 def cw2_profile(**kw) -> P:
-    """Clockwork 2 profile. The interface plane goes 5 mm up (130.8 -> 135.8) to bridge the CW2
+    """Clockwork 2 profile. The interface plane goes 5.5 mm up (130.8 -> 136.3) to bridge the CW2
     latch, and the seat bottom moves with it, so stinger_len (20.48) and therefore the hat, rack and
     gauge stay identical to the G2E ones."""
-    z_if = kw.pop("z_if", 135.8)
+    z_if = kw.pop("z_if", 136.3)          # 135.8 leaves 0.7 mm under the ID wire channel; 136.3: 1.2
     g2e = P()
     d = dict(extruder="cw2", axis_y=0.0, nip_z=86.31, z_if=z_if,
              seat_bottom_z=z_if - g2e.stinger_len - g2e.stinger_gap,
