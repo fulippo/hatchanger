@@ -6,7 +6,8 @@ Parts
                    clearance) with our top: raised flat interface pad, magnets, 2 dowel pins,
                    cone socket for the stinger. Stock G2E board mount (any board that fits it).
   main_body_hatchanger_cw2 : the same interface on the FilamATrix Clockwork 2 main body
-                   (--extruder cw2, cw2_profile()): 5.5 mm higher to bridge the CW2 latch, same hats.
+                   (--extruder cw2, cw2_profile()): 5.5 mm higher to bridge the CW2 latch, 40 mm
+                   stinger (same hat print, bowden set with stinger_gauge_cw2).
   hat            : ECAS04 on top, continuous 4x2 bowden through it (the stinger), V-ridge rails
                    with a tapered nose, magnets; locates on the dowels.
   stinger_gauge  : jig that sets how far the bowden sticks out of the hat.
@@ -138,10 +139,18 @@ class P:
     # ---- Clockwork 2 base (cw2_profile) ----------------------------------------------------
     # Built on the FilamATrix CW2 main body (GPL-3.0, thunderkeys), taken from the CW2 branch of
     # "Stealthburner_FilamATrix.step" (already on the axis: filament at x = y = 0). Dual-switch body:
-    # pre-gear D2F (ball at z 99.13) and after-gears D2F (ball at z 76.19), both kept. Its PTFE runs
-    # 4.2 down to z 106, then 2.4 to the gears. The top is 130.19; the CW2 latch reaches 130.93
-    # behind the axis (x <= -5.1, y >= 6.8), under the -X magnet: the interface goes up to clear it.
+    # after-gears D2F (ball at z 76.19) kept; its pre-gear D2F (ball at z 99.13) is filled with the
+    # No_Switch body's material, because the long CW2 stinger runs down past it. Its PTFE runs 4.2
+    # down to z 106, then 2.4 to the gears. The top is 130.19; the CW2 latch reaches 130.93 behind
+    # the axis (x <= -5.1, y >= 6.8), under the -X magnet: the interface goes up to clear it.
     cw2_body_name: str = "Main_Body_Dual_Switch:1"
+    cw2_nosw_name: str = "Main_Body_No_Switch:1"
+    cw2_pregear_box: tuple = (-1.0, 17.0, -8.3, 6.0, 94.0, 108.0)   # pre-gear D2F, ball, M2 screw holes
+    # The CW2 gears are ~19.5 mm further below the hat than on G2E. With the G2E stinger (20.48)
+    # 32.5 mm of bare filament would hang below a docked hat; 40.0 brings it back to G2E's ~13 mm
+    # (seat bottom 9.5 mm above the nip, as on G2E). The printed hat is the same: only the bowden
+    # is set longer, with stinger_gauge_cw2.
+    cw2_stinger_len: float = 40.0
     cw2_keepout_names: tuple = ("[a]_latch_ecas v1:1", "Cable_Cover_EBB v1:1", "Cover_w_Sensor v1:1")
     cw2_clear: float = 0.4          # added material stays this far from the latch and the covers
     cw2_latch_slide: float = 8.0    # latch keep-out runs this far past the pad towards +Y (the latch
@@ -158,7 +167,8 @@ class P:
     # deflection. Below cw2_splice_z (nothing changed there) the STL uses FilamATrix's own
     # main_body_clockwork2_dual_switch.stl instead, mapped onto the CW2 frame: STEP axes = STL axes
     # (cw2_stl_axes) x cw2_stl_signs, then aligned on the bounding box.
-    cw2_splice_z: float = 103.13
+    cw2_splice_z: float = 86.77     # below every change (seat exit cone ends ~92, sensor fill 94)
+    cw2_splice_alt: tuple = (90.53, 84.13, 88.41, 80.37, 78.29)   # tried in turn if not watertight
     cw2_stl_axes: tuple = (0, 2, 1)
     cw2_stl_signs: tuple = (1, 1, -1)
 
@@ -525,12 +535,13 @@ def front_body_hatchanger(p: P, stock: cq.Shape, g2_body: cq.Shape = None) -> cq
 
 def cw2_profile(**kw) -> P:
     """Clockwork 2 profile. The interface plane goes 5.5 mm up (130.8 -> 136.3) to bridge the CW2
-    latch, and the seat bottom moves with it, so stinger_len (20.48) and therefore the hat, rack and
-    gauge stay identical to the G2E ones."""
+    latch. The seat goes down to cw2_stinger_len (40) below it, so a docked hat's filament hangs
+    as little as on G2E. Hat and rack prints are the G2E ones; the bowden is set with
+    stinger_gauge_cw2."""
     z_if = kw.pop("z_if", 136.3)          # 135.8 leaves 0.7 mm under the ID wire channel; 136.3: 1.2
-    g2e = P()
+    base = P(**{k: v for k, v in kw.items() if k in ("stinger_gap", "cw2_stinger_len")})
     d = dict(extruder="cw2", axis_y=0.0, nip_z=86.31, z_if=z_if,
-             seat_bottom_z=z_if - g2e.stinger_len - g2e.stinger_gap,
+             seat_bottom_z=z_if - base.cw2_stinger_len - base.stinger_gap,
              pad_y0=-8.2,              # flush with the CW2 front face (the body prints on it)
              pad_y1=11.6, sensor_z=76.19, sw_cb=False, board_relief=0.0)
     d.update(kw)
@@ -595,6 +606,7 @@ def load_cw2(path, p: P):
     for f in sorted(cache.glob("*.brep")):
         parts.append((f.stem.split("__", 1)[1], cq.Shape.importBrep(str(f))))
     body = next(s for n, s in parts if n == p.cw2_body_name)
+    body.nosw = next((s for n, s in parts if n == p.cw2_nosw_name), None)
     keep = [s for n, s in parts if n in p.cw2_keepout_names]
     if len(keep) != len(p.cw2_keepout_names):
         raise ValueError(f"CW2 keep-out parts not all found: {p.cw2_keepout_names}")
@@ -658,6 +670,11 @@ def front_body_cw2(p: P, stock: cq.Shape, keep) -> cq.Workplane:
     covers: everything added stays cw2_clear away from them."""
     ay = p.axis_y
     body = cq.Workplane("XY").add(stock)
+    nosw = getattr(stock, "nosw", None)
+    if nosw is not None:                        # fill the pre-gear sensor from the No_Switch body
+        body = body.union(cq.Workplane("XY").add(nosw).intersect(box(*p.cw2_pregear_box)), clean=False)
+    elif p.seat_bottom_z < p.cw2_pregear_box[5]:
+        raise ValueError("the CW2 seat reaches the pre-gear sensor: the No_Switch body is needed to fill it")
     # 0. fill the stock ECAS pocket and 4.2 PTFE channel (seat, socket and guide are re-cut below)
     er, ez = p.cw2_ecas_fill
     br, bz = p.cw2_bore_fill
@@ -676,8 +693,9 @@ def front_body_cw2(p: P, stock: cq.Shape, keep) -> cq.Workplane:
     front_body_cw2.added = add                  # kept for the clearance checks
     body = body.union(add, clean=False)
     # 2. guide bore from the seat down into the stock 2.4 channel, then seat / socket / exit cone
-    body = body.cut(cyl_z(p.cw2_guide_d, p.cw2_guide_z0, p.seat_bottom_z - p.cw2_guide_z0 + 0.5, y=ay),
-                    clean=False)
+    if p.seat_bottom_z > p.cw2_guide_z0:        # seat ends above the stock 2.4 bore: guide down to it
+        body = body.cut(cyl_z(p.cw2_guide_d, p.cw2_guide_z0, p.seat_bottom_z - p.cw2_guide_z0 + 0.5,
+                              y=ay), clean=False)
     body = _cut_seat(p, body)
     # 3. magnets, dowels, hat-ID wire channel
     body = _cut_interface(p, body)
@@ -1404,8 +1422,10 @@ def export_stl(w, path, deflection=0.01, angle=0.1):
 
 
 def export_stl_spliced(w, path, ref_stl, stock: cq.Shape, p: P):
-    """STL of `w` above p.cw2_splice_z (meshed here) + the reference STL below it (manifold3d
-    union). Falls back to export_stl if the reference is missing or doesn't match `stock`."""
+    """STL of `w` above a splice plane (meshed here) + the reference STL below it (manifold3d
+    union). The plane starts at p.cw2_splice_z; where the union comes out not watertight (it
+    depends on what the plane cuts through) the next height in cw2_splice_alt is tried. Falls
+    back to export_stl if the reference is missing or doesn't match `stock`."""
     import tempfile
     try:
         import numpy as np, trimesh, manifold3d as m3
@@ -1424,31 +1444,42 @@ def export_stl_spliced(w, path, ref_stl, stock: cq.Shape, p: P):
         ref.invert()
     if np.abs((v.max(0) - v.min(0)) - size).max() > 0.05 or abs(ref.volume / stock.Volume() - 1) > 0.002:
         print(f"{ref_stl} does not match the CW2 STEP body: plain STL export"); return export_stl(w, path)
-    zc = p.cw2_splice_z
+    ta = math.tan(math.radians(p.seat_exit_angle))
+    lowest = min(p.seat_bottom_z + 0.3 - (p.seat_d / 2 + 0.3 * ta - 0.95) / ta, p.cw2_pregear_box[4],
+                 p.cw2_bore_fill[1], p.cw2_guide_z0)
     shape = w.val() if hasattr(w, "val") else w
-    top = shape.intersect(cq.Solid.makeBox(400, 400, 400, cq.Vector(-200, -200, zc)))
-    with tempfile.TemporaryDirectory() as d:
-        export_stl(top, Path(d) / "top.stl")
-        topm = trimesh.load(str(Path(d) / "top.stl"))
 
     def man(t):
         return m3.Manifold(m3.Mesh(vert_properties=np.asarray(t.vertices, np.float32),
                                    tri_verts=np.asarray(t.faces, np.uint32)))
-    low = man(ref) ^ m3.Manifold.cube([400, 400, 400]).translate([-200, -200, zc - 400])
-    r = (low + man(topm)).to_mesh()
-    # the union leaves some vertices a few 1e-5 mm apart, which an STL reader merges into
-    # non-manifold edges: weld them on a 0.001 mm grid, drop the zero-volume slivers
-    out = trimesh.Trimesh(np.asarray(r.vert_properties[:, :3], float), r.tri_verts, process=False)
-    out.merge_vertices(digits_vertex=3)
-    out.update_faces(out.nondegenerate_faces()); out.update_faces(out.unique_faces())
-    out.remove_unreferenced_vertices()
-    parts = [b for b in out.split(only_watertight=False) if abs(b.volume) > 0.01]
-    if not topm.is_watertight or not parts:
-        print("spliced STL failed (top mesh not closed): plain STL export"); return export_stl(w, path)
-    out = trimesh.util.concatenate(parts)                # drops zero-volume slivers of the union
-    if not out.is_watertight:
-        print(f"WARNING: {path} is not watertight")
-    out.export(str(path))
+
+    for zc in (p.cw2_splice_z,) + tuple(p.cw2_splice_alt):
+        if zc > lowest - 1.0:
+            continue                                    # the plane must be below every change
+        top = shape.intersect(cq.Solid.makeBox(400, 400, 400, cq.Vector(-200, -200, zc)))
+        with tempfile.TemporaryDirectory() as d:
+            export_stl(top, Path(d) / "top.stl")
+            topm = trimesh.load(str(Path(d) / "top.stl"))
+        if not topm.is_watertight:
+            continue
+        low = man(ref) ^ m3.Manifold.cube([400, 400, 400]).translate([-200, -200, zc - 400])
+        r = (low + man(topm)).to_mesh()
+        # the union leaves some vertices a few 1e-5 mm apart, which an STL reader merges into
+        # non-manifold edges: weld them on a 0.001 mm grid, drop the zero-volume slivers
+        out = trimesh.Trimesh(np.asarray(r.vert_properties[:, :3], float), r.tri_verts, process=False)
+        out.merge_vertices(digits_vertex=3)
+        out.update_faces(out.nondegenerate_faces()); out.update_faces(out.unique_faces())
+        out.remove_unreferenced_vertices()
+        parts = [b for b in out.split(only_watertight=False) if abs(b.volume) > 0.01]
+        if not parts:
+            continue
+        out = trimesh.util.concatenate(parts)
+        out.export(str(path))
+        if trimesh.load(str(path), force="mesh").is_watertight:
+            print(f"{path}: spliced at z {zc:g}")
+            return
+    print("spliced STL failed at every height: plain STL export")
+    export_stl(w, path)
 
 
 def build(g2_step, fmx, out="out", p: P = P()):
@@ -1504,15 +1535,17 @@ def build(g2_step, fmx, out="out", p: P = P()):
 
 
 def build_cw2(fmx, out="out", p: P = None, ref_stl=None):
-    """Clockwork 2 main body + a check assembly. The hat, rack, spacers and gauge are the G2E ones
-    (same stinger_len): build() exports them."""
+    """Clockwork 2 main body, its stinger gauge (longer bowden) and a check assembly. The hat, rack
+    and spacers are the G2E prints: build() exports them."""
     p = p or cw2_profile()
     g2e = P()
-    assert abs(p.stinger_len - g2e.stinger_len) < 1e-9, "CW2 profile changed the stinger length"
     out = Path(out); out.mkdir(exist_ok=True)
     stock, keep, cw2parts = load_cw2(fmx, p)
     fb = front_body_cw2(p, stock, keep)
     cq.exporters.export(fb, str(out / "main_body_hatchanger_cw2.step"))
+    gauge = stinger_gauge(p)
+    cq.exporters.export(gauge, str(out / "stinger_gauge_cw2.step"))
+    export_stl(gauge, out / "stinger_gauge_cw2.stl")
     # mesh the STEP as written (the in-memory solid of the boolean chain meshes with gaps)
     fb_step = cq.importers.importStep(str(out / "main_body_hatchanger_cw2.step")).val()
     export_stl_spliced(fb_step, out / "main_body_hatchanger_cw2.stl", ref_stl, stock, p)
@@ -1535,7 +1568,9 @@ def build_cw2(fmx, out="out", p: P = None, ref_stl=None):
 
     print(f"CW2: interface plane z = {p.z_if:.2f} ({p.z_if - g2e.z_if:+.2f} vs G2E) -> nip "
           f"{p.if_to_nip:.2f} mm below it (G2E {g2e.if_to_nip:.2f})")
-    print(f"stinger {p.stinger_len:.2f} mm below the hat, as on G2E: same hats")
+    print(f"stinger {p.stinger_len:.2f} mm below the hat (G2E {g2e.stinger_len:.2f}): set with "
+          f"stinger_gauge_cw2; bare filament below a docked hat {p.if_to_nip - p.stinger_len + 3.0:.1f} mm "
+          f"(G2E {g2e.if_to_nip - g2e.stinger_len + 3.0:.1f}, grip_margin 3)")
     print(f"after-gears sensor {p.nip_z - p.sensor_z:.2f} mm below the nip (macro nip_to_sensor)")
     return fb, stock, keep, cw2parts
 

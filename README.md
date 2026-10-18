@@ -47,7 +47,7 @@ cuts the filament before each unload, so no tip forming is needed.
 ## Requirements
 
 - Voron 2.4 with a Stealthburner and a [Galileo 2](https://github.com/JaredC01/Galileo2) extruder
-  (stock G2E toolhead board mount), or a Clockwork 2 with `main_body_hatchanger_cw2`
+  (stock G2E toolhead board mount), or a Clockwork 2 with `main_body_hatchanger_cw2` and 40 mm stingers
   (experimental, see [docs/CAD.md](docs/CAD.md#clockwork-2))
 - The [FilamATrix](https://github.com/thunderkeys/FilamATrix) cutter, G2E version
   (HatChanger's `front_body_hatchanger` replaces its `front_body_g2e`)
