@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.0](https://github.com/fulippo/hatchanger/compare/v0.1.0...v0.2.0) (2026-10-19)
+
+
+### Features
+
+* **install:** update from release zips ([#9](https://github.com/fulippo/hatchanger/issues/9)) ([0c562e2](https://github.com/fulippo/hatchanger/commit/0c562e2db3e7753bdfed7bfccc013925862903b3))
+
 ## 0.1.0 (2026-10-16)
 
 
