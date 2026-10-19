@@ -56,7 +56,7 @@ cuts the filament before each unload, so no tip forming is needed.
 
 ## Quick start
 
-1. **Print and assemble** the parts in [`cad/stl`](cad/stl) following the
+1. **Print and assemble** the parts in [`cad/hatchanger/stl`](cad/hatchanger/stl) following the
    [bill of materials](docs/BOM.md).
 2. **Install the macros** on the printer:
 
@@ -82,12 +82,14 @@ The full walkthrough is in [docs/INSTALL.md](docs/INSTALL.md).
 | [Bill of materials](docs/BOM.md) | Hardware, print settings, assembly notes |
 | [AFC integration](docs/AFC.md) | Running HatChanger as an Armored Turtle AFC unit |
 | [CAD](docs/CAD.md) | Part descriptions and rebuilding the models |
+| [Top hat](docs/TOPHAT.md) | Heated-chamber canopy for the bowdens of the loaded hat |
 | [Roadmap](ROADMAP.md) | Known limitations and planned work |
 
 ## Repository layout
 
 ```
-cad/            CadQuery sources, STEP and STL exports
+cad/            one folder per component (hatchanger/, ptfe_rail_clamp/, tophat/),
+                each with source/ (CadQuery), stl/ and step/
 docs/           documentation and images
 klipper/        Klipper macros, the AFC unit driver and integration tests
 scripts/        config-editing helper used by install.sh

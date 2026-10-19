@@ -16,15 +16,15 @@ prints at about the tube size. v1 drew the band at 3.95 mm: it printed ~3.8 and 
 tube stuck halfway; v2 (bore 4.40, band 4.10) was still too tight on the prototype printer,
 and v3 (4.60 / 4.30) only moved the problem: since v4 there is no band, every bore is a plain
 4.50 mm (the tubes are guided, not clamped). To bring a band back, tune it with the test strip:
-    python cad/source/ptfe_rail_clamp.py --grip-test
+    python cad/ptfe_rail_clamp/source/ptfe_rail_clamp.py --grip-test
 (one bore per GRIP_D in GRIP_TEST, labelled with the hundredths: "10" = 4.10 mm). Use the
 largest size that still holds the tube in place by itself (4.60 = no band, plain bore).
 The tubes pass OUTSET mm outside the extrusion's outer face, clear of a side panel and
 its clips, and continue below the rail (no part of the clamp is below Z=0).
 
 Usage:
-    python cad/source/ptfe_rail_clamp.py [--lanes N] [--grip D] [--out DIR]
-    python cad/source/ptfe_rail_clamp.py --grip-test [--out DIR]
+    python cad/ptfe_rail_clamp/source/ptfe_rail_clamp.py [--lanes N] [--grip D] [--out DIR]
+    python cad/ptfe_rail_clamp/source/ptfe_rail_clamp.py --grip-test [--out DIR]
 Outputs STEP and watertight STL to ./out. The STL is in print orientation, which is
 also the mounting orientation: foot on the bed, bores vertical.
 
