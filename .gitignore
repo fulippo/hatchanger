@@ -45,3 +45,4 @@ Thumbs.db
 
 # test inputs are not slicer output
 !klipper/tests/*.gcode
+dist/

@@ -3,7 +3,7 @@
 
   user-cfg      write hatchanger_user.cfg: your machine's values, kept across updates
   printer-block add / remove the HatChanger include block in printer.cfg
-  moonraker     add / remove [update_manager hatchanger] in moonraker.conf
+  moonraker     add / remove [update_manager hatchanger] in moonraker.conf (git clone or release zip)
   afc-cfg       set the AFC.cfg options HatChanger needs: tool_cut / park / form_tip off,
                 AFC_POOP / AFC_KICK / AFC_BRUSH with placeholder positions fixed;
                 or --restore the values it changed
@@ -165,7 +165,14 @@ def cmd_moonraker(a) -> int:
     text = p.read_text()
     sec = re.compile(r"\n?\[update_manager hatchanger\]\n(?:(?!\[).*\n?)*", re.M)
     new = sec.sub("\n", text).rstrip("\n") + "\n"
-    if not a.remove:
+    if not a.remove and a.type == "zip":       # release zips (hatchanger.zip on each GitHub release)
+        new += ("\n[update_manager hatchanger]\n"
+                "type: zip\n"
+                f"channel: {a.channel}\n"
+                f"repo: {a.github_repo}\n"
+                f"path: {a.repo}\n"
+                "managed_services: klipper\n")
+    elif not a.remove:                          # a git clone: follows its branch
         new += ("\n[update_manager hatchanger]\n"
                 "type: git_repo\n"
                 f"path: {a.repo}\n"
@@ -457,6 +464,11 @@ def main() -> int:
     m.add_argument("--repo", default="~/hatchanger")
     m.add_argument("--origin", default="https://github.com/fulippo/hatchanger.git")
     m.add_argument("--branch", default="main")
+    m.add_argument("--type", choices=["git_repo", "zip"], default="git_repo",
+                   help="git_repo: a git clone, follows --branch; zip: release zips from --github-repo")
+    m.add_argument("--github-repo", default="fulippo/hatchanger", help="zip: owner/name on GitHub")
+    m.add_argument("--channel", choices=["stable", "beta"], default="stable",
+                   help="zip: stable = releases only, beta = pre-releases too")
     m.add_argument("--remove", action="store_true")
     f = sub.add_parser("afc-cfg")
     f.add_argument("--afc-cfg", required=True)

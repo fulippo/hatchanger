@@ -212,6 +212,43 @@ class InstallTests(unittest.TestCase):
         self.assertIn("not installed", out)
         self.assertNotIn("HatChanger", h.text("printer.cfg"))
 
+    def test_git_clone_registers_git_repo(self):
+        self.h = h = FakeHome(afc=False, hand_made=False)
+        h.run("-y", "--no-hat-id")
+        m = h.text("moonraker.conf")
+        self.assertIn("type: git_repo", m)
+        self.assertIn("primary_branch:", m)
+
+    def test_release_zip_install_registers_zip(self):
+        self.h = h = FakeHome(afc=False, hand_made=False)
+        dist = h.home / "dist"
+        subprocess.run([sys.executable, str(REPO / "scripts" / "release_zip.py"), "--version", "v9.9.9",
+                        "--out", str(dist)], check=True, capture_output=True)
+        import zipfile
+        with zipfile.ZipFile(dist / "hatchanger.zip") as z:
+            names = z.namelist()
+            self.assertIn("release_info.json", names)
+            self.assertIn("install.sh", names)
+            self.assertFalse([n for n in names if n.startswith(("cad/", "tests/", "klipper/tests/"))])
+            info = json.loads(z.read("release_info.json"))
+            self.assertEqual((info["project_owner"], info["project_name"], info["version"]),
+                             ("fulippo", "hatchanger", "v9.9.9"))
+            z.extractall(h.home / "hatchanger")
+        with zipfile.ZipFile(dist / "hatchanger-stl-v9.9.9.zip") as z:
+            self.assertTrue(all(n.endswith(".stl") for n in z.namelist()))
+        env = dict(os.environ, HOME=str(h.home))
+        r = subprocess.run(["bash", str(h.home / "hatchanger" / "install.sh"), "--no-restart", "-y",
+                            "--no-hat-id", "--beta"], env=env, capture_output=True, text=True, timeout=120)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        m = h.text("moonraker.conf")
+        for line in ("type: zip", "channel: beta", "repo: fulippo/hatchanger",
+                     f"path: {h.home / 'hatchanger'}", "managed_services: klipper"):
+            self.assertIn(line, m)
+        self.assertNotIn("primary_branch", m)
+        self.assertEqual(os.readlink(h.cfg / "hatchanger" / "hatchanger.cfg"),
+                         str(h.home / "hatchanger" / "klipper" / "config" / "hatchanger.cfg"))
+        self.assertIn("release zips (beta)", r.stdout)
+
     def test_existing_save_variables_kept(self):
         self.h = h = FakeHome(afc=False, hand_made=False)
         with open(h.cfg / "printer.cfg", "a") as f:

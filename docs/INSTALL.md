@@ -14,9 +14,12 @@ FilamATrix's length for your hotend.
 ## 2. Install the macros
 
 ```sh
-cd ~ && git clone https://github.com/fulippo/hatchanger.git
-./hatchanger/install.sh
+cd ~ && wget -q https://github.com/fulippo/hatchanger/releases/latest/download/hatchanger.zip \
+  && unzip -oq hatchanger.zip -d hatchanger && rm hatchanger.zip
+bash hatchanger/install.sh
 ```
+
+This installs the latest release (see [Release or git clone](#release-or-git-clone)).
 
 The installer asks whether to run under [AFC](AFC.md) (only if AFC is installed). Then it:
 
@@ -30,7 +33,8 @@ The installer asks whether to run under [AFC](AFC.md) (only if AFC is installed)
   and the old files are kept as `*.hatchanger-<date>`.
 - **Adds one marked include block to `printer.cfg`**, and comments out old HatChanger includes.
 - **Registers `hatchanger` with Moonraker's update manager**, so it updates from
-  Mainsail/Fluidd.
+  Mainsail/Fluidd: from new releases for a release install, or from your branch for a git
+  clone.
 - **Under AFC:** links the AFC unit into Klipper, turns off AFC's cut, park and tip forming, and
   offers to disable the AFC hardware files for a unit you don't have.
 
@@ -55,6 +59,25 @@ This removes the include block, the links and the update-manager entry. Under AF
 restores the `AFC.cfg` values it changed and re-enables the AFC files it disabled. If the
 install migrated a hand-made one, it offers to put that back. Your `hatchanger_user.cfg` and
 lane file stay unless you add `--purge`.
+
+### Release or git clone
+
+The installer looks at how `~/hatchanger` got there and registers the matching update type with
+Moonraker:
+
+- **Release zip (recommended).** `hatchanger.zip` from a GitHub release holds only what the
+  printer needs: the installer, the Klipper config, the AFC unit and the docs, with no STL or
+  STEP files. Moonraker (`type: zip`) offers each new release in the update manager and restarts
+  Klipper after installing it. Add `--beta` to the installer to get pre-releases too. Each
+  release also carries `hatchanger-stl-<version>.zip` with the print files of that version.
+- **Git clone.** `git clone https://github.com/fulippo/hatchanger.git` then
+  `./hatchanger/install.sh`. Moonraker (`type: git_repo`) follows the branch you have checked
+  out, commit by commit, including the CAD files. Use this to test a branch before it's released.
+
+To switch from a git clone to releases, move the clone out of the way (`mv ~/hatchanger
+~/hatchanger-git`), unpack the release zip as above and run its `install.sh`. It relinks the
+config files and rewrites the update-manager entry. Moonraker won't manage a release folder that
+sits inside a git repository.
 
 ## 3. Calibrate
 
