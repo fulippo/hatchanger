@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/fulippo/hatchanger/compare/v0.2.1...v0.3.0) (2026-10-19)
+
+
+### Features
+
+* **cad:** heated-chamber top hat ([#13](https://github.com/fulippo/hatchanger/issues/13)) ([be45531](https://github.com/fulippo/hatchanger/commit/be45531997d22f0eaba598da5beb90167f2b9cf1))
+
 ## [0.2.1](https://github.com/fulippo/hatchanger/compare/v0.2.0...v0.2.1) (2026-10-19)
 
 
