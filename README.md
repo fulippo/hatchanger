@@ -82,6 +82,7 @@ The full walkthrough is in [docs/INSTALL.md](docs/INSTALL.md).
 | [Bill of materials](docs/BOM.md) | Hardware, print settings, assembly notes |
 | [AFC integration](docs/AFC.md) | Running HatChanger as an Armored Turtle AFC unit |
 | [CAD](docs/CAD.md) | Part descriptions and rebuilding the models |
+| [Top hat](docs/TOPHAT.md) | Heated-chamber canopy for the bowdens of the loaded hat |
 | [Roadmap](ROADMAP.md) | Known limitations and planned work |
 
 ## Repository layout
