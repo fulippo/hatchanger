@@ -17,7 +17,7 @@ jobs:
         run: |
           bash -n install.sh
           pip install pyflakes
-          python -m pyflakes scripts/cfgtool.py tests/test_install.py klipper/extras/AFC_HatChanger.py klipper/tests/*.py
+          python -m pyflakes scripts/cfgtool.py scripts/release_zip.py tests/test_install.py klipper/extras/AFC_HatChanger.py klipper/tests/*.py
       - name: Installer tests (fake printer homes, fake Moonraker)
         run: python tests/test_install.py
 

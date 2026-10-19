@@ -14,9 +14,12 @@ FilamATrix's length for your hotend.
 ## 2. Install the macros
 
 ```sh
-cd ~ && git clone https://github.com/fulippo/hatchanger.git
-./hatchanger/install.sh
+cd ~ && wget -q https://github.com/fulippo/hatchanger/releases/latest/download/hatchanger.zip \
+  && unzip -oq hatchanger.zip -d hatchanger && rm hatchanger.zip
+bash hatchanger/install.sh
 ```
+
+This installs the latest release (see [Updates](#updates)).
 
 The installer asks whether to run under [AFC](AFC.md) (only if AFC is installed). Then it:
 
@@ -29,7 +32,7 @@ The installer asks whether to run under [AFC](AFC.md) (only if AFC is installed)
   install (`hatchanger*.cfg` copies) is migrated: options that differ from the repo move there,
   and the old files are kept as `*.hatchanger-<date>`.
 - **Adds one marked include block to `printer.cfg`**, and comments out old HatChanger includes.
-- **Registers `hatchanger` with Moonraker's update manager**, so it updates from
+- **Registers `hatchanger` with Moonraker's update manager**, so new releases install from
   Mainsail/Fluidd.
 - **Under AFC:** links the AFC unit into Klipper, turns off AFC's cut, park and tip forming, and
   offers to disable the AFC hardware files for a unit you don't have.
@@ -55,6 +58,19 @@ This removes the include block, the links and the update-manager entry. Under AF
 restores the `AFC.cfg` values it changed and re-enables the AFC files it disabled. If the
 install migrated a hand-made one, it offers to put that back. Your `hatchanger_user.cfg` and
 lane file stay unless you add `--purge`.
+
+### Updates
+
+Updates always come from GitHub releases. Moonraker's update manager (`type: zip`) offers each
+new release and restarts Klipper after installing it. A release is `hatchanger.zip`: the
+installer, the Klipper config, the AFC unit and the docs, with no CAD files. Add `--beta` to the
+installer to get pre-releases too. Each release also carries `hatchanger-stl-<version>.zip` with
+the print files of that version.
+
+If you run `install.sh` from a git clone, it downloads the latest release into
+`~/hatchanger-release` and installs from there. Moonraker can't manage a folder inside a git
+repository, so the clone itself isn't used by the printer. An older install that followed a git
+branch is switched to release updates the next time you run the installer.
 
 ## 3. Calibrate
 

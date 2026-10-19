@@ -61,9 +61,13 @@ cuts the filament before each unload, so no tip forming is needed.
 2. **Install the macros** on the printer:
 
    ```sh
-   cd ~ && git clone https://github.com/fulippo/hatchanger.git
-   ./hatchanger/install.sh
+   cd ~ && wget -q https://github.com/fulippo/hatchanger/releases/latest/download/hatchanger.zip \
+     && unzip -oq hatchanger.zip -d hatchanger && rm hatchanger.zip
+   bash hatchanger/install.sh
    ```
+
+   This installs the latest release: only the macros and the installer, no CAD files. Moonraker
+   then updates it from new releases.
 
 3. **Calibrate** the dock and cutter positions, then **test** the lanes.
 

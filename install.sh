@@ -1,8 +1,13 @@
 #!/usr/bin/env bash
 # HatChanger installer: links the Klipper files into your config, adds the includes to
-# printer.cfg and registers the repo with Moonraker's update manager.
+# printer.cfg and registers HatChanger with Moonraker's update manager.
 #
-#   cd ~ && git clone https://github.com/fulippo/hatchanger.git && ./hatchanger/install.sh
+#   cd ~ && wget -q https://github.com/fulippo/hatchanger/releases/latest/download/hatchanger.zip \
+#     && unzip -oq hatchanger.zip -d hatchanger && rm hatchanger.zip && bash hatchanger/install.sh
+#
+# Updates always come from GitHub releases (Moonraker update type zip: no CAD files on the
+# printer). Run from a git clone, the installer downloads the latest release into
+# ~/hatchanger-release and installs from there (Moonraker can't manage a folder inside git).
 #
 # Options:
 #   --afc | --standalone   run as an AFC unit, or on its own with T0/T1/... macros
@@ -12,6 +17,7 @@
 #   -k DIR                 Klipper checkout           (default ~/klipper)
 #   -m FILE                moonraker.conf             (default <config dir>/moonraker.conf)
 #   -y                     take the default answer to every question (no prompts)
+#   --beta                 also take pre-releases (Moonraker channel beta)
 #   --no-restart           don't restart Klipper / Moonraker at the end
 #   --afc-help             print the answers to give AFC's own installer, and exit
 #   --check                after restarting Klipper: ask Moonraker whether Klipper, AFC and
@@ -28,7 +34,7 @@
 #   <config>/hatchanger/hatchanger_tools.cfg or _afc.cfg   -> copied once (your lanes)
 #   <config>/hatchanger/hatchanger_user.cfg                -> your values, never overwritten
 #   printer.cfg                                            -> one marked include block
-#   moonraker.conf                                         -> [update_manager hatchanger]
+#   moonraker.conf                                         -> [update_manager hatchanger], type zip
 #   AFC mode: klippy/extras/AFC_HatChanger.py link, AFC.cfg tool_cut/park/form_tip off
 # An older hand-made install (hatchanger*.cfg copies in the config dir) is migrated: options
 # whose values differ from the repo go into hatchanger_user.cfg, the old files move aside.
@@ -36,6 +42,8 @@
 set -euo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ARGS=("$@")
+RELEASE_DIR="${HOME}/hatchanger-release"   # where a clone puts the release it installs
 CFG_DIR="${HOME}/printer_data/config"
 KLIPPER_DIR="${HOME}/klipper"
 MOONRAKER_CONF=""
@@ -49,6 +57,7 @@ PURGE=0
 AFC_HELP=0
 CHECK=0
 MOONRAKER_URL=""
+CHANNEL=stable
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -60,6 +69,7 @@ while [ $# -gt 0 ]; do
     -k) KLIPPER_DIR="$2"; shift ;;
     -m) MOONRAKER_CONF="$2"; shift ;;
     -y) YES=1 ;;
+    --beta) CHANNEL=beta ;;
     --no-restart) RESTART=0 ;;
     --uninstall) UNINSTALL=1 ;;
     --purge) PURGE=1 ;;
@@ -138,6 +148,16 @@ if [ "$CHECK" = 1 ]; then
 fi
 [ -f "${CFG_DIR}/printer.cfg" ] || { echo "no printer.cfg in ${CFG_DIR} (use -c DIR)"; exit 1; }
 command -v python3 >/dev/null || { echo "python3 is required"; exit 1; }
+
+# ------------------------------------------------------------------------- release ----------
+# Installs always run from an unpacked release, which Moonraker then keeps updated. From a git
+# clone: fetch the latest release and hand over to its installer.
+if [ "$UNINSTALL" = 0 ] && [ ! -f "${REPO}/release_info.json" ]; then
+  say "Getting the latest HatChanger release$( [ "$CHANNEL" = beta ] && echo ' (pre-releases too)' ) -> ${RELEASE_DIR}"
+  $TOOL fetch-release --out "$RELEASE_DIR" $( [ "$CHANNEL" = beta ] && echo --beta ) \
+    || { warn "  could not get the release: check the network, or install from the release zip (README)"; exit 1; }
+  exec bash "${RELEASE_DIR}/install.sh" ${ARGS[@]+"${ARGS[@]}"}
+fi
 
 # ------------------------------------------------------------------------- uninstall --------
 if [ "$UNINSTALL" = 1 ]; then
@@ -325,9 +345,11 @@ $TOOL printer-block --printer "${CFG_DIR}/printer.cfg" --mode "$MODE" --hat-id "
 if [ "$MODE" = standalone ] && [ -f "${CFG_DIR}/AFC/AFC.cfg" ] && grep -qE '^\[include AFC/' "${CFG_DIR}/printer.cfg"; then
   warn "  AFC is included too: AFC and hatchanger_tools.cfg both define T0/T1. Use --afc, or remove AFC's include"
 fi
-BRANCH="$(git -C "$REPO" rev-parse --abbrev-ref HEAD 2>/dev/null || echo main)"
-$TOOL moonraker --conf "$MOONRAKER_CONF" --repo "$REPO" --branch "$BRANCH" \
-  --origin "$(git -C "$REPO" remote get-url origin 2>/dev/null || echo https://github.com/fulippo/hatchanger.git)"
+GH_REPO="$(python3 -c 'import json,sys; i=json.load(open(sys.argv[1])); print(i["project_owner"] + "/" + i["project_name"])' "${REPO}/release_info.json")"
+if git -C "$REPO" rev-parse --show-toplevel >/dev/null 2>&1; then
+  warn "  ${REPO} is inside a git repository: Moonraker's zip updates refuse that path. Move it out."
+fi
+$TOOL moonraker --conf "$MOONRAKER_CONF" --repo "$REPO" --github-repo "$GH_REPO" --channel "$CHANNEL"
 
 say "Done."
 if ! grep -rqE '^\[respond\]' "${CFG_DIR}"/*.cfg 2>/dev/null; then
@@ -335,7 +357,7 @@ if ! grep -rqE '^\[respond\]' "${CFG_DIR}"/*.cfg 2>/dev/null; then
 fi
 echo "  Set your values (sensor pin, dock, cutter) in ${DEST}/hatchanger_user.cfg."
 [ "$MODE" = afc ] && echo "  Lanes: ${DEST}/hatchanger_afc.cfg. Setup notes: ${REPO}/docs/AFC.md"
-echo "  Updates: Mainsail/Fluidd update manager ('hatchanger'), or git pull + restart Klipper."
+echo "  Updates: Mainsail/Fluidd update manager ('hatchanger', $( [ "$CHANNEL" = beta ] && echo 'releases and pre-releases' || echo releases ))."
 restart moonraker
 restart klipper
 if [[ "$RESTARTED" == *klipper* ]]; then
