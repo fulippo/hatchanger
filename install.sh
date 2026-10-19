@@ -151,12 +151,19 @@ command -v python3 >/dev/null || { echo "python3 is required"; exit 1; }
 
 # ------------------------------------------------------------------------- release ----------
 # Installs always run from an unpacked release, which Moonraker then keeps updated. From a git
-# clone: fetch the latest release and hand over to its installer.
-if [ "$UNINSTALL" = 0 ] && [ ! -f "${REPO}/release_info.json" ]; then
+# clone - also one with a release zip unpacked on top of it: Moonraker's zip updates refuse any
+# folder inside a git repository - fetch the latest release and hand over to its installer.
+in_git() { git -C "$1" rev-parse --is-inside-work-tree >/dev/null 2>&1; }
+if [ "$UNINSTALL" = 0 ] && { [ ! -f "${REPO}/release_info.json" ] || in_git "$REPO"; }; then
+  if [ -n "${HATCHANGER_FETCHED:-}" ]; then   # already handed over once: don't loop
+    warn "${REPO} is inside a git repository: Moonraker can't manage it. Move it out of the repository."
+    exit 1
+  fi
+  [ -f "${REPO}/release_info.json" ] && warn "${REPO} has a release unpacked inside a git clone: Moonraker can't manage it there"
   say "Getting the latest HatChanger release$( [ "$CHANNEL" = beta ] && echo ' (pre-releases too)' ) -> ${RELEASE_DIR}"
   $TOOL fetch-release --out "$RELEASE_DIR" $( [ "$CHANNEL" = beta ] && echo --beta ) \
     || { warn "  could not get the release: check the network, or install from the release zip (README)"; exit 1; }
-  exec bash "${RELEASE_DIR}/install.sh" ${ARGS[@]+"${ARGS[@]}"}
+  HATCHANGER_FETCHED=1 exec bash "${RELEASE_DIR}/install.sh" ${ARGS[@]+"${ARGS[@]}"}
 fi
 
 # ------------------------------------------------------------------------- uninstall --------
@@ -346,10 +353,8 @@ if [ "$MODE" = standalone ] && [ -f "${CFG_DIR}/AFC/AFC.cfg" ] && grep -qE '^\[i
   warn "  AFC is included too: AFC and hatchanger_tools.cfg both define T0/T1. Use --afc, or remove AFC's include"
 fi
 GH_REPO="$(python3 -c 'import json,sys; i=json.load(open(sys.argv[1])); print(i["project_owner"] + "/" + i["project_name"])' "${REPO}/release_info.json")"
-if git -C "$REPO" rev-parse --show-toplevel >/dev/null 2>&1; then
-  warn "  ${REPO} is inside a git repository: Moonraker's zip updates refuse that path. Move it out."
-fi
-$TOOL moonraker --conf "$MOONRAKER_CONF" --repo "$REPO" --github-repo "$GH_REPO" --channel "$CHANNEL"
+MR_OUT="$($TOOL moonraker --conf "$MOONRAKER_CONF" --repo "$REPO" --github-repo "$GH_REPO" --channel "$CHANNEL")"
+echo "$MR_OUT"
 
 say "Done."
 if ! grep -rqE '^\[respond\]' "${CFG_DIR}"/*.cfg 2>/dev/null; then
@@ -360,6 +365,10 @@ echo "  Set your values (sensor pin, dock, cutter) in ${DEST}/hatchanger_user.cf
 echo "  Updates: Mainsail/Fluidd update manager ('hatchanger', $( [ "$CHANNEL" = beta ] && echo 'releases and pre-releases' || echo releases ))."
 restart moonraker
 restart klipper
+if [[ "$MR_OUT" == *written* ]] && [[ "$RESTARTED" != *moonraker* ]]; then
+  warn "  Moonraker wasn't restarted: until it is, the update manager keeps showing the old"
+  warn "  'hatchanger' entry. Run: sudo systemctl restart moonraker"
+fi
 if [[ "$RESTARTED" == *klipper* ]]; then
   say "Checking the result (./install.sh --check runs this again any time)"
   EXP=""; [ "$MODE" = afc ] && EXP="--expect-afc"

@@ -232,6 +232,28 @@ class InstallTests(unittest.TestCase):
             self.assertIn(line, m)
         self.assertNotIn("git_repo", m)
 
+    def test_release_unpacked_in_clone_fetches(self):
+        """A release zip unpacked on top of a git clone: Moonraker can't manage that folder."""
+        self.h = h = FakeHome(afc=False, hand_made=False)
+        clone = h.home / "hatchanger"
+        import zipfile
+        with zipfile.ZipFile(RELEASE_ZIP) as z:
+            z.extractall(clone)
+        subprocess.run(["git", "init", "-q", str(clone)], check=True)
+        env = dict(os.environ, HOME=str(h.home), HATCHANGER_RELEASE_ZIP=str(RELEASE_ZIP))
+        r = subprocess.run(["bash", str(clone / "install.sh"), "--no-restart", "-y", "--no-hat-id"],
+                           env=env, capture_output=True, text=True, timeout=120)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("inside a git clone", r.stdout + r.stderr)
+        self.assertIn(f"path: {h.home / 'hatchanger-release'}", h.text("moonraker.conf"))
+
+    def test_warns_when_moonraker_not_restarted(self):
+        self.h = h = FakeHome(afc=False, hand_made=False)
+        out = h.run("-y", "--no-hat-id")
+        self.assertIn("sudo systemctl restart moonraker", out)
+        out = h.run("-y", "--no-hat-id")            # entry unchanged: no warning
+        self.assertNotIn("sudo systemctl restart moonraker", out)
+
     def test_old_git_repo_entry_replaced(self):
         self.h = h = FakeHome(afc=False, hand_made=False)
         with open(h.cfg / "moonraker.conf", "a") as f:

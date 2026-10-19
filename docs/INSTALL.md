@@ -67,10 +67,12 @@ installer, the Klipper config, the AFC unit and the docs, with no CAD files. Add
 installer to get pre-releases too. Each release also carries `hatchanger-stl-<version>.zip` with
 the print files of that version.
 
-If you run `install.sh` from a git clone, it downloads the latest release into
-`~/hatchanger-release` and installs from there. Moonraker can't manage a folder inside a git
+If you run `install.sh` from a git clone, or from a release unpacked inside one, it downloads the
+latest release into `~/hatchanger-release` and installs from there. Moonraker can't manage a folder inside a git
 repository, so the clone itself isn't used by the printer. An older install that followed a git
-branch is switched to release updates the next time you run the installer.
+branch is switched to release updates the next time you run the installer. Moonraker only
+picks up the new entry after it restarts: the installer offers to restart it, and warns if it
+didn't.
 
 ## 3. Calibrate
 
