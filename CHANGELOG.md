@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1](https://github.com/fulippo/hatchanger/compare/v0.2.0...v0.2.1) (2026-10-19)
+
+
+### Bug Fixes
+
+* **install:** never treat a git folder as a release; warn when Moonraker wasn't restarted ([#11](https://github.com/fulippo/hatchanger/issues/11)) ([2aafa21](https://github.com/fulippo/hatchanger/commit/2aafa219eaf577a596d7720efe97df89b4ac7521))
+
 ## [0.2.0](https://github.com/fulippo/hatchanger/compare/v0.1.0...v0.2.0) (2026-10-19)
 
 
