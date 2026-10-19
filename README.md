@@ -67,8 +67,7 @@ cuts the filament before each unload, so no tip forming is needed.
    ```
 
    This installs the latest release: only the macros and the installer, no CAD files. Moonraker
-   then updates it from new releases. To follow the code on a branch instead, see
-   [docs/INSTALL.md](docs/INSTALL.md#release-or-git-clone).
+   then updates it from new releases.
 
 3. **Calibrate** the dock and cutter positions, then **test** the lanes.
 

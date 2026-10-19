@@ -3,7 +3,8 @@
 
   user-cfg      write hatchanger_user.cfg: your machine's values, kept across updates
   printer-block add / remove the HatChanger include block in printer.cfg
-  moonraker     add / remove [update_manager hatchanger] in moonraker.conf (git clone or release zip)
+  moonraker     add / remove [update_manager hatchanger] in moonraker.conf (type zip: releases)
+  fetch-release download the latest release's hatchanger.zip and unpack it (install from a clone)
   afc-cfg       set the AFC.cfg options HatChanger needs: tool_cut / park / form_tip off,
                 AFC_POOP / AFC_KICK / AFC_BRUSH with placeholder positions fixed;
                 or --restore the values it changed
@@ -165,19 +166,12 @@ def cmd_moonraker(a) -> int:
     text = p.read_text()
     sec = re.compile(r"\n?\[update_manager hatchanger\]\n(?:(?!\[).*\n?)*", re.M)
     new = sec.sub("\n", text).rstrip("\n") + "\n"
-    if not a.remove and a.type == "zip":       # release zips (hatchanger.zip on each GitHub release)
+    if not a.remove:                            # release zips (hatchanger.zip on each GitHub release)
         new += ("\n[update_manager hatchanger]\n"
                 "type: zip\n"
                 f"channel: {a.channel}\n"
                 f"repo: {a.github_repo}\n"
                 f"path: {a.repo}\n"
-                "managed_services: klipper\n")
-    elif not a.remove:                          # a git clone: follows its branch
-        new += ("\n[update_manager hatchanger]\n"
-                "type: git_repo\n"
-                f"path: {a.repo}\n"
-                f"origin: {a.origin}\n"
-                f"primary_branch: {a.branch}\n"
                 "managed_services: klipper\n")
     if new != text:
         backup(p)
@@ -444,6 +438,47 @@ def cmd_save_vars(a) -> int:
     return 0
 
 
+def cmd_fetch_release(a) -> int:
+    """Unpack the latest release's hatchanger.zip into --out (replacing what's there). The newest
+    release that has the asset; with --beta, pre-releases count too. HATCHANGER_RELEASE_ZIP=<file>
+    uses a local zip instead (tests, offline installs)."""
+    import io
+    import json
+    import os
+    import urllib.request
+    import zipfile
+    local = os.environ.get("HATCHANGER_RELEASE_ZIP")
+    if local:
+        data, tag = pathlib.Path(local).read_bytes(), "local zip"
+    else:
+        try:
+            req = urllib.request.Request(f"https://api.github.com/repos/{a.github_repo}/releases",
+                                         headers={"Accept": "application/vnd.github+json"})
+            with urllib.request.urlopen(req, timeout=30) as r:
+                releases = json.load(r)
+            rel = next(r for r in releases if not r.get("draft") and (a.beta or not r.get("prerelease"))
+                       and any(x["name"] == a.asset for x in r.get("assets", [])))
+            url = next(x["browser_download_url"] for x in rel["assets"] if x["name"] == a.asset)
+            with urllib.request.urlopen(url, timeout=120) as r:
+                data, tag = r.read(), rel["tag_name"]
+        except StopIteration:
+            print(f"  no release of {a.github_repo} has {a.asset} yet", file=sys.stderr)
+            return 1
+        except OSError as e:
+            print(f"  download failed: {e}", file=sys.stderr)
+            return 1
+    out = pathlib.Path(a.out).expanduser()
+    with zipfile.ZipFile(io.BytesIO(data)) as z:
+        if "release_info.json" not in z.namelist():
+            print("  the zip has no release_info.json: not a HatChanger release", file=sys.stderr)
+            return 1
+        if out.exists():
+            shutil.rmtree(out)
+        z.extractall(out)
+    print(f"  {tag} unpacked in {out}")
+    return 0
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -462,10 +497,6 @@ def main() -> int:
     m = sub.add_parser("moonraker")
     m.add_argument("--conf", required=True)
     m.add_argument("--repo", default="~/hatchanger")
-    m.add_argument("--origin", default="https://github.com/fulippo/hatchanger.git")
-    m.add_argument("--branch", default="main")
-    m.add_argument("--type", choices=["git_repo", "zip"], default="git_repo",
-                   help="git_repo: a git clone, follows --branch; zip: release zips from --github-repo")
     m.add_argument("--github-repo", default="fulippo/hatchanger", help="zip: owner/name on GitHub")
     m.add_argument("--channel", choices=["stable", "beta"], default="stable",
                    help="zip: stable = releases only, beta = pre-releases too")
@@ -482,11 +513,16 @@ def main() -> int:
     c.add_argument("--wait", type=float, default=0, help="seconds to wait for Klipper to start")
     pm = sub.add_parser("purge-macro", help="print the effective _HAT_CFG purge_macro")
     pm.add_argument("files", nargs="+", help="hatchanger.cfg, then hatchanger_user.cfg (later wins)")
+    fr = sub.add_parser("fetch-release")
+    fr.add_argument("--out", required=True)
+    fr.add_argument("--github-repo", default="fulippo/hatchanger")
+    fr.add_argument("--asset", default="hatchanger.zip")
+    fr.add_argument("--beta", action="store_true", help="pre-releases count too")
     v = sub.add_parser("save-vars")
     v.add_argument("--cfg-dir", required=True)
     v.add_argument("--user-cfg", required=True)
     a = ap.parse_args()
-    return {"check": cmd_check, "purge-macro": cmd_purge_macro, "save-vars": cmd_save_vars, "user-cfg": cmd_user_cfg, "printer-block": cmd_printer_block,
+    return {"check": cmd_check, "purge-macro": cmd_purge_macro, "save-vars": cmd_save_vars, "fetch-release": cmd_fetch_release, "user-cfg": cmd_user_cfg, "printer-block": cmd_printer_block,
             "moonraker": cmd_moonraker, "afc-cfg": cmd_afc_cfg}[a.cmd](a)
 
 

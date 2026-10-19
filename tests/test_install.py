@@ -21,6 +21,12 @@ import unittest
 REPO = pathlib.Path(__file__).resolve().parent.parent
 INSTALL = REPO / "install.sh"
 CFGTOOL = REPO / "scripts" / "cfgtool.py"
+# Run from this checkout, install.sh fetches the latest release: the tests hand it a release
+# zip built from the working tree instead (HATCHANGER_RELEASE_ZIP), so they need no network.
+DIST = pathlib.Path(tempfile.mkdtemp(prefix="hc_dist_"))
+subprocess.run([sys.executable, str(REPO / "scripts" / "release_zip.py"), "--version", "v9.9.9",
+                "--out", str(DIST)], check=True, capture_output=True)
+RELEASE_ZIP = DIST / "hatchanger.zip"
 
 PRINTER_CFG = """[include mainsail.cfg]
 [include AFC/*.cfg]
@@ -66,7 +72,8 @@ def tree_hash(root: pathlib.Path, skip=(".hatchanger-",)) -> dict:
     out = {}
     for p in sorted(root.rglob("*")):
         rel = p.relative_to(root).as_posix()
-        if any(s in rel for s in skip) or rel.startswith("printer_data/config/hatchanger/"):
+        if any(s in rel for s in skip) or rel.startswith(("printer_data/config/hatchanger/",
+                                                           "hatchanger-release/")):
             continue
         if p.is_symlink():
             out[rel] = "link:" + os.readlink(p)
@@ -108,7 +115,7 @@ class FakeHome:
         self.before = tree_hash(self.home)
 
     def run(self, *args, stdin="", check=True):
-        env = dict(os.environ, HOME=str(self.home))
+        env = dict(os.environ, HOME=str(self.home), HATCHANGER_RELEASE_ZIP=str(RELEASE_ZIP))
         r = subprocess.run(["bash", str(INSTALL), "--no-restart", *args], env=env, input=stdin,
                            capture_output=True, text=True, timeout=120)
         if check and r.returncode != 0:
@@ -212,12 +219,29 @@ class InstallTests(unittest.TestCase):
         self.assertIn("not installed", out)
         self.assertNotIn("HatChanger", h.text("printer.cfg"))
 
-    def test_git_clone_registers_git_repo(self):
+    def test_clone_installs_from_release(self):
         self.h = h = FakeHome(afc=False, hand_made=False)
+        out = h.run("-y", "--no-hat-id")
+        rel = h.home / "hatchanger-release"
+        self.assertIn("unpacked in", out)
+        self.assertTrue((rel / "release_info.json").is_file())
+        self.assertEqual(os.readlink(h.cfg / "hatchanger" / "hatchanger.cfg"),
+                         str(rel / "klipper" / "config" / "hatchanger.cfg"))
+        m = h.text("moonraker.conf")
+        for line in ("type: zip", "channel: stable", "repo: fulippo/hatchanger", f"path: {rel}"):
+            self.assertIn(line, m)
+        self.assertNotIn("git_repo", m)
+
+    def test_old_git_repo_entry_replaced(self):
+        self.h = h = FakeHome(afc=False, hand_made=False)
+        with open(h.cfg / "moonraker.conf", "a") as f:
+            f.write("\n[update_manager hatchanger]\ntype: git_repo\npath: ~/hatchanger\n"
+                    "origin: https://github.com/fulippo/hatchanger.git\nprimary_branch: main\n")
         h.run("-y", "--no-hat-id")
         m = h.text("moonraker.conf")
-        self.assertIn("type: git_repo", m)
-        self.assertIn("primary_branch:", m)
+        self.assertEqual(m.count("[update_manager hatchanger]"), 1)
+        self.assertIn("type: zip", m)
+        self.assertNotIn("primary_branch", m)
 
     def test_release_zip_install_registers_zip(self):
         self.h = h = FakeHome(afc=False, hand_made=False)
@@ -247,7 +271,7 @@ class InstallTests(unittest.TestCase):
         self.assertNotIn("primary_branch", m)
         self.assertEqual(os.readlink(h.cfg / "hatchanger" / "hatchanger.cfg"),
                          str(h.home / "hatchanger" / "klipper" / "config" / "hatchanger.cfg"))
-        self.assertIn("release zips (beta)", r.stdout)
+        self.assertIn("releases and pre-releases", r.stdout)
 
     def test_existing_save_variables_kept(self):
         self.h = h = FakeHome(afc=False, hand_made=False)
