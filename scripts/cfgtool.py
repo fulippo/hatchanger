@@ -10,6 +10,7 @@
   purge-macro   print the effective _HAT_CFG purge_macro
   check         after a restart: ask Moonraker whether Klipper / AFC / HatChanger started cleanly
   save-vars     keep an existing [save_variables] file (hatchanger.cfg declares its own)
+  extruder-overlap  list the options hatchanger_user.cfg sets that the extruder profile sets too
 
 Every file is backed up next to itself (<name>.hatchanger-<timestamp>) before it changes.
 """
@@ -128,11 +129,11 @@ def cmd_printer_block(a) -> int:
     if a.remove and a.uncomment_legacy:
         new, n_legacy = re.subn(rf"^# (\[include[^\]]*\]){re.escape(tag)}$", r"\1", new, flags=re.M)
     else:
-        legacy = re.compile(r"^(\[include\s+[^\]]*hatchanger(_id|_afc|_tools|_user)?\.cfg\s*\])", re.M)
+        legacy = re.compile(r"^(\[include\s+[^\]]*hatchanger(_id|_afc|_tools|_user|_extruder)?\.cfg\s*\])", re.M)
         new, n_legacy = legacy.subn(rf"# \1{tag}", new)
     if not a.remove:
         block = [BEGIN, "# managed by ~/hatchanger/install.sh: rerun it instead of editing here",
-                 "[include hatchanger/hatchanger.cfg]"]
+                 "[include hatchanger/hatchanger.cfg]", "[include hatchanger/hatchanger_extruder.cfg]"]
         if a.hat_id:
             block.append("[include hatchanger/hatchanger_id.cfg]")
         block.append("[include hatchanger/hatchanger_afc.cfg]" if a.mode == "afc"
@@ -437,6 +438,18 @@ def cmd_save_vars(a) -> int:
     return 0
 
 
+def cmd_extruder_overlap(a) -> int:
+    """Print the _HAT_CFG options set (uncommented) in hatchanger_user.cfg that the extruder
+    profile sets too, with both values: after switching extruder, those still win."""
+    sec = "gcode_macro _HAT_CFG"
+    prof = read_options(pathlib.Path(a.profile)).get(sec, {})
+    user = read_options(pathlib.Path(a.user_cfg)).get(sec, {})
+    for k in prof:
+        if k != "variable_extruder" and k in user and user[k][0] != prof[k][0]:
+            print(f"{k[len('variable_'):] if k.startswith('variable_') else k}: {user[k][0]} (profile: {prof[k][0]})")
+    return 0
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -470,11 +483,15 @@ def main() -> int:
     c.add_argument("--wait", type=float, default=0, help="seconds to wait for Klipper to start")
     pm = sub.add_parser("purge-macro", help="print the effective _HAT_CFG purge_macro")
     pm.add_argument("files", nargs="+", help="hatchanger.cfg, then hatchanger_user.cfg (later wins)")
+    o = sub.add_parser("extruder-overlap")
+    o.add_argument("--profile", required=True)
+    o.add_argument("--user-cfg", required=True)
     v = sub.add_parser("save-vars")
     v.add_argument("--cfg-dir", required=True)
     v.add_argument("--user-cfg", required=True)
     a = ap.parse_args()
-    return {"check": cmd_check, "purge-macro": cmd_purge_macro, "save-vars": cmd_save_vars, "user-cfg": cmd_user_cfg, "printer-block": cmd_printer_block,
+    return {"check": cmd_check, "purge-macro": cmd_purge_macro, "save-vars": cmd_save_vars,
+            "extruder-overlap": cmd_extruder_overlap, "user-cfg": cmd_user_cfg, "printer-block": cmd_printer_block,
             "moonraker": cmd_moonraker, "afc-cfg": cmd_afc_cfg}[a.cmd](a)
 
 

@@ -13,6 +13,7 @@ Setup (once):
 
 Run:
   venv/bin/python <hatchanger>/klipper/tests/run_afc_test.py --klipper <klipper dir>
+  (--extruder g2e / cw2 to run one extruder profile only; default: both)
 """
 import argparse
 import http.server
@@ -27,6 +28,11 @@ import threading
 HERE = pathlib.Path(__file__).resolve().parent
 CFG = HERE.parent / "config"
 EXTRAS = HERE.parent / "extras"
+
+
+def cfg_value(path: pathlib.Path, key: str, default: float) -> float:
+    m = re.search(rf"^variable_{key}:\s*([-0-9.]+)", path.read_text(), re.M)
+    return float(m.group(1)) if m else default
 
 
 def strip_section(text: str, name: str) -> str:
@@ -77,6 +83,8 @@ def main() -> int:
     ap.add_argument("--dict", type=pathlib.Path, default=None,
                     help="MCU dictionary (default: <klipper>/out/klipper.dict)")
     ap.add_argument("--keep", action="store_true", help="keep the temp dir")
+    ap.add_argument("--extruder", choices=["g2e", "cw2", "all"], default="all",
+                    help="extruder profile(s) to run the scenarios with (extruder_<name>.cfg)")
     args = ap.parse_args()
     kl = args.klipper.resolve()
     mcu_dict = (args.dict or kl / "out" / "klipper.dict").resolve()
@@ -96,16 +104,19 @@ def main() -> int:
     # scenario that triggers one on purpose must be last in its file or in a file of its own
     scenarios = [("afc_test.gcode", 3), ("afc_test_eject.gcode", 0)]
     ok = True
+    profiles = ["g2e", "cw2"] if args.extruder == "all" else [args.extruder]
     try:
-        for name, want_cuts in scenarios:
-            ok &= run_scenario(kl, mcu_dict, server, name, want_cuts, args.keep)
+        for ext in profiles:
+            print(f"\n##### extruder profile: {ext}")
+            for name, want_cuts in scenarios:
+                ok &= run_scenario(kl, mcu_dict, server, name, want_cuts, args.keep, ext)
     finally:
         (extras / "hat_sim.py").unlink()
     print("\nPASS" if ok else "\nFAIL")
     return 0 if ok else 1
 
 
-def run_scenario(kl, mcu_dict, server, name, want_cuts, keep) -> bool:
+def run_scenario(kl, mcu_dict, server, name, want_cuts, keep, extruder="g2e") -> bool:
     tmp = pathlib.Path(tempfile.mkdtemp(prefix="hatchanger_afc_"))
     FakeMoonraker.posts = []
     hc = (CFG / "hatchanger.cfg").read_text()
@@ -113,12 +124,23 @@ def run_scenario(kl, mcu_dict, server, name, want_cuts, keep) -> bool:
     hc = hc.replace("~/printer_data/config/hatchanger_vars.cfg", str(tmp / "vars.cfg"))
     (tmp / "hatchanger.cfg").write_text(hc)
     (tmp / "hatchanger_afc.cfg").write_text((CFG / "hatchanger_afc.cfg").read_text())
-    (tmp / "test.cfg").write_text(
-        (HERE / "afc_test_printer.cfg").read_text().replace("{TMP}", str(tmp))
-        .replace("{PORT}", str(server.server_address[1])))
+    profile = CFG / f"extruder_{extruder}.cfg"
+    (tmp / "hatchanger_extruder.cfg").write_text(profile.read_text())
+    # the simulator's geometry follows the profile: sensor distance, and the loaded hat's tip
+    # where a load leaves it (stub_gap above the blade)
+    hcfg = CFG / "hatchanger.cfg"
+    sensor = cfg_value(profile, "nip_to_sensor", cfg_value(hcfg, "nip_to_sensor", 19.85))
+    loaded = (cfg_value(profile, "nip_to_cut", cfg_value(hcfg, "nip_to_cut", 38.35))
+              - cfg_value(hcfg, "stub_gap", 2.0))
+    test = (HERE / "afc_test_printer.cfg").read_text().replace("{TMP}", str(tmp)) \
+        .replace("{PORT}", str(server.server_address[1]))
+    test = re.sub(r"^nip_to_sensor: .*$", f"nip_to_sensor: {sensor:g}", test, flags=re.M)
+    test = re.sub(r"^initial_tips: [-0-9.]+,", f"initial_tips: {loaded:g},", test, flags=re.M)
+    (tmp / "test.cfg").write_text(test)
     # hatchanger_afc.cfg BEFORE AFC's [AFC] section on purpose: the unit must cope with it
     (tmp / "printer.cfg").write_text(
-        "[include hatchanger.cfg]\n[include hatchanger_afc.cfg]\n[include test.cfg]\n")
+        "[include hatchanger.cfg]\n[include hatchanger_extruder.cfg]\n"
+        "[include hatchanger_afc.cfg]\n[include test.cfg]\n")
     # hat 0 on the head, loaded to the nozzle
     (tmp / "vars.cfg").write_text("[Variables]\nhat_lane = 0\nhat_loaded = 1\n")
     (tmp / "AFC.var.unit").write_text("{}")             # AFC's lane state file (installer creates it)

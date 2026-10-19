@@ -11,6 +11,10 @@ Build the FilamATrix cutter from
 `front_body_hatchanger` in place of `front_body_g2e`. The hotend's PTFE liner must be cut to
 FilamATrix's length for your hotend.
 
+On a Clockwork 2, use `main_body_hatchanger_cw2` in place of the FilamATrix CW2 main body, and
+set each hat's bowden with `stinger_gauge_cw2` (40 mm) instead of `stinger_gauge`. The hats
+themselves are the same print. See [CAD.md](CAD.md#clockwork-2).
+
 ## 2. Install the macros
 
 ```sh
@@ -18,10 +22,17 @@ cd ~ && git clone https://github.com/fulippo/hatchanger.git
 ./hatchanger/install.sh
 ```
 
-The installer asks whether to run under [AFC](AFC.md) (only if AFC is installed). Then it:
+The installer asks which extruder you have: Galileo 2 (`g2e`, the default) or Clockwork 2
+(`cw2`). It also asks whether to run under [AFC](AFC.md), but only if AFC is installed. Then it:
 
 - **Links the macros.** `hatchanger.cfg` is linked from `~/printer_data/config/hatchanger/` into
   the repo, so updates reach it.
+- **Links the extruder profile** `extruder_g2e.cfg` or `extruder_cw2.cfg` as
+  `hatchanger_extruder.cfg`. It's included right after `hatchanger.cfg` and sets the
+  extruder-dependent values: `nozzle_to_nip`, `nip_to_sensor`, `nip_to_cut`, `z_clear` and
+  `z_clear_loaded`. Rerun with `--extruder cw2` (or `g2e`) to switch. If `hatchanger_user.cfg`
+  already overrides one of those values, the installer lists it, since your value still wins.
+  After a switch, re-set the bowdens with the matching gauge and recalibrate `dock_z`.
 - **Copies the lane file once.** `hatchanger_tools.cfg` (the `T0`, `T1`, … macros) or, under
   AFC, `hatchanger_afc.cfg` (the lanes). Edit it when you add racks.
 - **Creates `hatchanger_user.cfg`** for your machine's values. It's included last, so anything
@@ -35,7 +46,7 @@ The installer asks whether to run under [AFC](AFC.md) (only if AFC is installed)
   offers to disable the AFC hardware files for a unit you don't have.
 
 Every file it edits is backed up first. `./hatchanger/install.sh --help` lists the options
-(`--afc`, `--standalone`, `-y`, …).
+(`--afc`, `--standalone`, `--extruder`, `-y`, …).
 
 After restarting Klipper, the installer runs `./hatchanger/install.sh --check`, which reports
 anything that didn't start cleanly. You can run it at any time.

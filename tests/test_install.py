@@ -212,6 +212,61 @@ class InstallTests(unittest.TestCase):
         self.assertIn("not installed", out)
         self.assertNotIn("HatChanger", h.text("printer.cfg"))
 
+    def test_extruder_default_is_g2e(self):
+        self.h = h = FakeHome(afc=False, hand_made=False)
+        out = h.run("-y", "--no-hat-id")
+        link = h.cfg / "hatchanger" / "hatchanger_extruder.cfg"
+        self.assertTrue(link.is_symlink())
+        self.assertEqual(os.path.basename(os.readlink(link)), "extruder_g2e.cfg")
+        p = h.text("printer.cfg")      # profile after the defaults, before your values
+        self.assertLess(p.index("[include hatchanger/hatchanger.cfg]"),
+                        p.index("[include hatchanger/hatchanger_extruder.cfg]"))
+        self.assertLess(p.index("[include hatchanger/hatchanger_extruder.cfg]"),
+                        p.index("[include hatchanger/hatchanger_user.cfg]"))
+        self.assertIn("standalone, g2e", out)
+
+    def test_extruder_cw2(self):
+        self.h = h = FakeHome(afc=False, hand_made=False)
+        h.run("-y", "--no-hat-id", "--extruder", "cw2")
+        link = h.cfg / "hatchanger" / "hatchanger_extruder.cfg"
+        self.assertEqual(os.path.basename(os.readlink(link)), "extruder_cw2.cfg")
+        self.assertIn("variable_nip_to_sensor: 10.12", link.read_text())
+        # a fresh hatchanger_user.cfg shows the CW2 values as the starting point
+        self.assertIn("#variable_nozzle_to_nip: 67.2", h.text("hatchanger/hatchanger_user.cfg"))
+        # a rerun keeps the current extruder
+        h.run("-y", "--no-hat-id")
+        self.assertEqual(os.path.basename(os.readlink(link)), "extruder_cw2.cfg")
+
+    def test_extruder_asked(self):
+        self.h = h = FakeHome(afc=False, hand_made=False)
+        # answers: continue standalone, hat-ID no, extruder 2
+        out = h.run(stdin="y\nn\n2\n")
+        self.assertIn("Clockwork 2", out)
+        self.assertEqual(os.path.basename(os.readlink(h.cfg / "hatchanger" / "hatchanger_extruder.cfg")),
+                         "extruder_cw2.cfg")
+
+    def test_extruder_switch_warns(self):
+        self.h = h = FakeHome(afc=False, hand_made=False)
+        h.run("-y", "--no-hat-id")
+        user = h.cfg / "hatchanger" / "hatchanger_user.cfg"
+        user.write_text(user.read_text().replace("#variable_nozzle_to_nip: 81.1", "variable_nozzle_to_nip: 80.4"))
+        out = h.run("-y", "--no-hat-id", "--extruder", "cw2")
+        self.assertIn("extruder changed: g2e -> cw2", out)
+        self.assertIn("nozzle_to_nip: 80.4 (profile: 67.2)", out)
+
+    def test_extruder_bad_value(self):
+        self.h = h = FakeHome(afc=False, hand_made=False)
+        out = h.run("-y", "--extruder", "bmg", check=False)
+        self.assertIn("--extruder must be one of", out)
+        self.assertNotIn("HatChanger", h.text("printer.cfg"))
+
+    def test_uninstall_removes_extruder_link(self):
+        self.h = h = FakeHome(afc=False, hand_made=False)
+        h.run("-y", "--no-hat-id", "--extruder", "cw2")
+        h.run("--uninstall", "-y")
+        self.assertFalse((h.cfg / "hatchanger" / "hatchanger_extruder.cfg").exists())
+        self.assertNotIn("hatchanger_extruder", h.text("printer.cfg"))
+
     def test_existing_save_variables_kept(self):
         self.h = h = FakeHome(afc=False, hand_made=False)
         with open(h.cfg / "printer.cfg", "a") as f:

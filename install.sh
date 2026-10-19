@@ -8,6 +8,8 @@
 #   --afc | --standalone   run as an AFC unit, or on its own with T0/T1/... macros
 #                          (default: --afc if AFC is installed, else --standalone; asked if unsure)
 #   --hat-id | --no-hat-id include the hat-ID reader config (default: asked)
+#   --extruder g2e|cw2     your extruder: g2e = Galileo 2 (front_body_hatchanger), cw2 = Clockwork 2
+#                          (main_body_hatchanger_cw2). Default: asked; on a rerun, the current one
 #   -c DIR                 Klipper config dir         (default ~/printer_data/config)
 #   -k DIR                 Klipper checkout           (default ~/klipper)
 #   -m FILE                moonraker.conf             (default <config dir>/moonraker.conf)
@@ -25,6 +27,7 @@
 #
 # What it does (every edited file is backed up as <file>.hatchanger-<date>):
 #   <config>/hatchanger/hatchanger.cfg, hatchanger_id.cfg  -> links into this repo (updated by git)
+#   <config>/hatchanger/hatchanger_extruder.cfg            -> link to extruder_<g2e|cw2>.cfg
 #   <config>/hatchanger/hatchanger_tools.cfg or _afc.cfg   -> copied once (your lanes)
 #   <config>/hatchanger/hatchanger_user.cfg                -> your values, never overwritten
 #   printer.cfg                                            -> one marked include block
@@ -41,6 +44,8 @@ KLIPPER_DIR="${HOME}/klipper"
 MOONRAKER_CONF=""
 MODE=""
 HAT_ID=""
+EXTRUDER=""
+EXTRUDERS="g2e cw2"
 YES=0
 RESTART=1
 RESTARTED=""
@@ -56,6 +61,7 @@ while [ $# -gt 0 ]; do
     --standalone) MODE=standalone ;;
     --hat-id) HAT_ID=1 ;;
     --no-hat-id) HAT_ID=0 ;;
+    --extruder) EXTRUDER="${2:-}"; shift ;;
     -c) CFG_DIR="$2"; shift ;;
     -k) KLIPPER_DIR="$2"; shift ;;
     -m) MOONRAKER_CONF="$2"; shift ;;
@@ -71,6 +77,9 @@ while [ $# -gt 0 ]; do
   esac
   shift
 done
+if [ -n "$EXTRUDER" ] && [[ " $EXTRUDERS " != *" $EXTRUDER "* ]]; then
+  echo "--extruder must be one of: ${EXTRUDERS}"; exit 1
+fi
 MOONRAKER_CONF="${MOONRAKER_CONF:-${CFG_DIR}/moonraker.conf}"
 MOONRAKER_URL="${MOONRAKER_URL:-http://localhost:7125}"
 DEST="${CFG_DIR}/hatchanger"
@@ -163,7 +172,7 @@ if [ "$UNINSTALL" = 1 ]; then
   $TOOL moonraker --conf "$MOONRAKER_CONF" --remove
 
   # 2. links into the repo and into Klipper
-  for f in hatchanger.cfg hatchanger_id.cfg; do
+  for f in hatchanger.cfg hatchanger_id.cfg hatchanger_extruder.cfg; do
     if [ -L "${DEST}/$f" ]; then rm "${DEST}/$f"; echo "  $f link removed"; fi
   done
   if [ -L "${EXTRAS}/AFC_HatChanger.py" ]; then
@@ -246,7 +255,30 @@ if [ -z "$HAT_ID" ]; then
   if [ -e "${CFG_DIR}/hatchanger_id.cfg" ] || ask "Include the hat-ID reader (ADS1115 board)?" n; then
     HAT_ID=1; else HAT_ID=0; fi
 fi
-say "Installing HatChanger: ${MODE}$( [ "$HAT_ID" = 1 ] && echo ', hat-ID reader' ) -> ${DEST}"
+PREV_EXTRUDER=""
+if [ -L "${DEST}/hatchanger_extruder.cfg" ]; then
+  PREV_EXTRUDER="$(basename "$(readlink "${DEST}/hatchanger_extruder.cfg")" .cfg)"
+  PREV_EXTRUDER="${PREV_EXTRUDER#extruder_}"
+fi
+if [ -z "$EXTRUDER" ]; then
+  DEF="${PREV_EXTRUDER:-g2e}"
+  if [ "$YES" = 1 ]; then
+    EXTRUDER="$DEF"
+  else
+    echo "Extruder on the toolhead:"
+    echo "  1) g2e  Galileo 2   (front_body_hatchanger, 20.48 mm stingers)"
+    echo "  2) cw2  Clockwork 2 (main_body_hatchanger_cw2, 40 mm stingers: stinger_gauge_cw2)"
+    read -r -p "Choose [$( [ "$DEF" = cw2 ] && echo 2 || echo 1 )] " r || true
+    case "${r:-}" in
+      1|g2e) EXTRUDER=g2e ;;
+      2|cw2) EXTRUDER=cw2 ;;
+      "") EXTRUDER="$DEF" ;;
+      *) echo "unknown choice: $r"; exit 1 ;;
+    esac
+  fi
+fi
+PROFILE="${REPO}/klipper/config/extruder_${EXTRUDER}.cfg"
+say "Installing HatChanger: ${MODE}, ${EXTRUDER}$( [ "$HAT_ID" = 1 ] && echo ', hat-ID reader' ) -> ${DEST}"
 
 # ------------------------------------------------------------------------- files ------------
 mkdir -p "$DEST"
@@ -254,7 +286,7 @@ OLD=()
 for f in hatchanger.cfg hatchanger_id.cfg; do
   [ -f "${CFG_DIR}/$f" ] && [ ! -L "${CFG_DIR}/$f" ] && OLD+=("${CFG_DIR}/$f")
 done
-REPO_CFG=("${REPO}/klipper/config/hatchanger.cfg" "${REPO}/klipper/config/hatchanger_id.cfg")
+REPO_CFG=("${REPO}/klipper/config/hatchanger.cfg" "${REPO}/klipper/config/hatchanger_id.cfg" "$PROFILE")
 $TOOL user-cfg --out "${DEST}/hatchanger_user.cfg" --repo-cfg "${REPO_CFG[@]}" \
   --hat-id "$HAT_ID" ${OLD[@]+--old "${OLD[@]}"}
 $TOOL save-vars --cfg-dir "$CFG_DIR" --user-cfg "${DEST}/hatchanger_user.cfg"
@@ -268,6 +300,16 @@ for f in hatchanger_tools.cfg hatchanger_afc.cfg; do   # an old hand copy of the
 done
 
 link "${REPO}/klipper/config/hatchanger.cfg" "${DEST}/hatchanger.cfg"
+link "$PROFILE" "${DEST}/hatchanger_extruder.cfg"
+if [ -n "$PREV_EXTRUDER" ] && [ "$PREV_EXTRUDER" != "$EXTRUDER" ]; then
+  warn "  extruder changed: ${PREV_EXTRUDER} -> ${EXTRUDER}. Re-set every hat's bowden with the matching"
+  warn "  stinger gauge, and recalibrate dock_z (HAT_CAL_DOCK): the hats sit at a different height"
+fi
+OVERLAP="$($TOOL extruder-overlap --profile "$PROFILE" --user-cfg "${DEST}/hatchanger_user.cfg")"
+if [ -n "$OVERLAP" ]; then
+  warn "  hatchanger_user.cfg overrides these ${EXTRUDER} profile values (yours win; check they fit this extruder):"
+  while IFS= read -r l; do warn "    $l"; done <<< "$OVERLAP"
+fi
 if [ "$HAT_ID" = 1 ]; then
   link "${REPO}/klipper/config/hatchanger_id.cfg" "${DEST}/hatchanger_id.cfg"
 elif [ -L "${DEST}/hatchanger_id.cfg" ]; then rm "${DEST}/hatchanger_id.cfg"; fi
@@ -278,14 +320,14 @@ if [ ! -f "${DEST}/${LANES}" ]; then
 else
   echo "  ${LANES} exists, kept"
 fi
-echo "  hatchanger.cfg$( [ "$HAT_ID" = 1 ] && echo ', hatchanger_id.cfg' ) linked to the repo"
+echo "  hatchanger.cfg$( [ "$HAT_ID" = 1 ] && echo ', hatchanger_id.cfg' ), extruder_${EXTRUDER}.cfg linked to the repo"
 
 # ------------------------------------------------------------------------- AFC --------------
 if [ "$MODE" = afc ]; then
   link "${REPO}/klipper/extras/AFC_HatChanger.py" "${EXTRAS}/AFC_HatChanger.py"
   exclude_from_git AFC_HatChanger.py
   echo "  AFC_HatChanger.py linked into ${EXTRAS}"
-  PURGE_MACRO="$($TOOL purge-macro "${REPO}/klipper/config/hatchanger.cfg" "${DEST}/hatchanger_user.cfg")"
+  PURGE_MACRO="$($TOOL purge-macro "${REPO}/klipper/config/hatchanger.cfg" "$PROFILE" "${DEST}/hatchanger_user.cfg")"
   if [ -n "$PURGE_MACRO" ] && ! grep -rqiE "^\[gcode_macro ${PURGE_MACRO}\]" "$CFG_DIR" --include='*.cfg' 2>/dev/null; then
     warn "  purge_macro '${PURGE_MACRO}' isn't defined in your config: not used as AFC's poop_cmd"
     PURGE_MACRO=""
