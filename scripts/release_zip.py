@@ -5,7 +5,8 @@
                               docs/*.md, README, LICENSE, CHANGELOG + release_info.json. Moonraker's
                               update manager ([update_manager hatchanger], type: zip) downloads this
                               asset ({section name}.zip) and unpacks it into ~/hatchanger.
-  hatchanger-stl-<tag>.zip    the print files of this version (cad/stl/*.stl)
+  hatchanger-stl-<tag>.zip    the print files of this version (cad/<component>/stl/**.stl), one
+                              folder per component (hatchanger/, ptfe_rail_clamp/, tophat/<size>/)
 
   python3 scripts/release_zip.py --version v0.2.0 --out dist
 
@@ -63,9 +64,11 @@ def build(version: str, out: pathlib.Path) -> tuple:
         add(z, "release_info.json", (json.dumps(info, indent=2) + "\n").encode())
     stl = out / f"{NAME}-stl-{version}.zip"
     with zipfile.ZipFile(stl, "w") as z:
-        for f in pick(files, ["cad/stl/"]):
-            if f.endswith(".stl"):
-                add(z, f"{NAME}-stl-{version}/{pathlib.PurePosixPath(f).name}", (REPO / f).read_bytes())
+        for f in pick(files, ["cad/"]):
+            parts = pathlib.PurePosixPath(f).parts      # cad/<component>/stl/...
+            if f.endswith(".stl") and len(parts) > 3 and parts[2] == "stl":
+                rel = pathlib.PurePosixPath(parts[1], *parts[3:])
+                add(z, f"{NAME}-stl-{version}/{rel}", (REPO / f).read_bytes())
     return app, stl
 
 

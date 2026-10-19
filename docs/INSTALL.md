@@ -2,7 +2,9 @@
 
 ## 1. Print and assemble
 
-Print-ready STL files are in [`cad/stl`](../cad/stl) and STEP files in [`cad/step`](../cad/step).
+Print-ready STL files are in [`cad/hatchanger/stl`](../cad/hatchanger/stl) and STEP files in
+[`cad/hatchanger/step`](../cad/hatchanger/step). Optional parts have their own folders:
+[`cad/ptfe_rail_clamp`](../cad/ptfe_rail_clamp) and the heated-chamber [`cad/tophat`](../cad/tophat) ([TOPHAT.md](TOPHAT.md)).
 The [bill of materials](BOM.md) has the hardware list, print orientations and assembly notes.
 Print in ABS/ASA with Voron settings: 0.2 mm layers, 4 walls, 40 % infill.
 

@@ -13,9 +13,10 @@ Pieces (each fits a 250 bed or larger), separated by FOAM_GAP for closed-cell fo
   tophat_<size>_centre_rear   x1  bowden exits (8 holes, TPU grommets)
   tophat_grommet_tpu / tophat_plug_tpu   (all sizes)
 
-  python3 cad/source/tophat.py                      # every size, both patterns -> cad/stl, cad/step
-  python3 cad/source/tophat.py --size 300           # one size
-  python3 cad/source/tophat.py --pattern voronoi    # voronoi panels (files *_voronoi)
+  python3 cad/tophat/source/tophat.py                    # every size, both patterns
+  python3 cad/tophat/source/tophat.py --size 300         # one size
+  python3 cad/tophat/source/tophat.py --pattern voronoi  # voronoi panels (files *_voronoi)
+  -> cad/tophat/stl/<size>/, cad/tophat/step/<size>/ (grommet and plug in cad/tophat/stl/, step/)
 Each piece is screwed to the frame's top slot (M3 x 10 + roll-in T-nut): the screw drops down a
 shaft from the printed top slot, a long 2.5 mm hex key reaches it through the slot.
 
@@ -309,10 +310,12 @@ def to_print(s):
 
 
 def export(c: C, stl_dir: Path, step_dir: Path, grommets=True):
+    """Walls into <dir>/<size>/, grommet and plug into <dir>/."""
     import sys
-    sys.path.insert(0, str(Path(__file__).parent))
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "hatchanger" / "source"))
     from hatchanger_cad import export_stl
-    stl_dir.mkdir(parents=True, exist_ok=True); step_dir.mkdir(parents=True, exist_ok=True)
+    for d in (stl_dir, step_dir):
+        (d / str(c.size)).mkdir(parents=True, exist_ok=True)
     suffix = "" if c.pattern == "hex" else f"_{c.pattern}"
     p = {}
     for n, s in pieces(c).items():
@@ -323,8 +326,9 @@ def export(c: C, stl_dir: Path, step_dir: Path, grommets=True):
             p[n.replace("tophat_", f"tophat_{c.size}_") + suffix] = s
     for n, s in p.items():
         s2 = to_print(s)
-        cq.exporters.export(cq.Workplane("XY").add(s2), str(step_dir / f"{n}.step"))
-        export_stl(s2, stl_dir / f"{n}.stl", deflection=0.03)
+        sub = "" if "tpu" in n else str(c.size)
+        cq.exporters.export(cq.Workplane("XY").add(s2), str(step_dir / sub / f"{n}.step"))
+        export_stl(s2, stl_dir / sub / f"{n}.stl", deflection=0.03)
         b = s2.BoundingBox()
         print(f"{n}: {b.xlen:.1f} x {b.ylen:.1f} x {b.zlen:.1f} mm, {s2.Volume() / 1000:.0f} cm3, valid {s2.isValid()}, "
               f"solids {len(s2.Solids())}")

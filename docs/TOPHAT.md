@@ -39,7 +39,7 @@ the rear wall.
 
 ## Parts
 
-Files for the Voron 2.4 250, 300 and 350: `tophat_<size>_...`. Every piece fits a 250 mm bed. Print in ASA/ABS, upright (bottom on the bed), no supports, 4 walls,
+Files for the Voron 2.4 250, 300 and 350 are in [`cad/tophat/stl/<size>`](../cad/tophat/stl). Every piece fits a 250 mm bed. Print in ASA/ABS, upright (bottom on the bed), no supports, 4 walls,
 15–20 % infill (the infill is the insulation).
 
 | Part | Qty | Where |
@@ -81,10 +81,13 @@ The `_voronoi` files are the same pieces with a voronoi pattern instead of the h
 ## Rebuilding
 
 ```
-python3 cad/source/tophat.py                                # every size, both patterns -> cad/stl, cad/step
-python3 cad/source/tophat.py --size 300 --pattern hex       # one size, one pattern
-python3 cad/source/tophat.py --size 300 --height 95         # taller wall
+python3 cad/tophat/source/tophat.py                          # every size, both patterns
+python3 cad/tophat/source/tophat.py --size 300 --pattern hex # one size, one pattern
+python3 cad/tophat/source/tophat.py --size 300 --height 95   # taller wall
 ```
+
+Files go to `cad/tophat/stl/<size>/` and `cad/tophat/step/<size>/`; the grommet and plug, the same
+for every size, to `cad/tophat/stl/` and `cad/tophat/step/`.
 
 Everything else (corner arm length, foam gap, slot dimensions, text, hole layout, pattern pitch)
 is in the `C` dataclass at the top of the source.

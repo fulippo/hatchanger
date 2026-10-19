@@ -1,5 +1,14 @@
 # CAD
 
+One folder per component, each with the CadQuery script in `source/` and the exports in `stl/`
+and `step/`:
+
+```
+cad/hatchanger/        front body, hat, hat rack (+ spacers), stinger gauge
+cad/ptfe_rail_clamp/   optional bowden clamp
+cad/tophat/            optional heated-chamber top hat: stl/<size>/ for 250, 300, 350
+```
+
 ## Parts
 
 | Part | Qty | What it does |
