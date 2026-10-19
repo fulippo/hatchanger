@@ -39,17 +39,23 @@ the rear wall.
 
 ## Parts
 
-All pieces fit a 300 mm bed. Print in ASA/ABS, upright (bottom on the bed), no supports, 4 walls,
-15–20 % infill (the infill is the insulation). About 0.9 kg of filament for the walls.
+Files for the Voron 2.4 250, 300 and 350: `tophat_<size>_...`. Every piece fits a 250 mm bed. Print in ASA/ABS, upright (bottom on the bed), no supports, 4 walls,
+15–20 % infill (the infill is the insulation).
 
 | Part | Qty | Where |
 |---|---:|---|
-| `tophat_corner` | 4 | Corners: one design, rotated (120 × 120 × 85 mm) |
-| `tophat_centre` | 2 | Left and right sides (215 × 20 × 85 mm) |
-| `tophat_centre_front` | 1 | Front, "HatChanger" plaque |
-| `tophat_centre_rear` | 1 | Rear, bowden exits |
-| `tophat_grommet_tpu` | 1 per tube | TPU 95A, in the rear holes, flange outside |
-| `tophat_plug_tpu` | 1 per unused hole | TPU 95A |
+| `tophat_<size>_corner` | 4 | Corners: one design, rotated (120 × 120 × 85 mm, the same for every size) |
+| `tophat_<size>_centre` | 2 | Left and right sides |
+| `tophat_<size>_centre_front` | 1 | Front, "HatChanger" plaque |
+| `tophat_<size>_centre_rear` | 1 | Rear, bowden exits |
+| `tophat_grommet_tpu` | 1 per tube | TPU 95A, in the rear holes, flange outside (all sizes) |
+| `tophat_plug_tpu` | 1 per unused hole | TPU 95A (all sizes) |
+
+| Size | Frame | Centre pieces | Walls (filament, approx.) |
+|---|---:|---:|---:|
+| 250 | 410 mm | 165 × 20 × 85 mm | 0.8 kg |
+| 300 | 460 mm | 215 × 20 × 85 mm | 0.9 kg |
+| 350 | 510 mm | 265 × 20 × 85 mm | 1.0 kg |
 
 The `_voronoi` files are the same pieces with a voronoi pattern instead of the honeycomb.
 
@@ -75,9 +81,9 @@ The `_voronoi` files are the same pieces with a voronoi pattern instead of the h
 ## Rebuilding
 
 ```
-python3 cad/source/tophat.py                     # honeycomb -> cad/stl, cad/step
-python3 cad/source/tophat.py --pattern voronoi   # *_voronoi files
-python3 cad/source/tophat.py --height 95         # taller wall
+python3 cad/source/tophat.py                                # every size, both patterns -> cad/stl, cad/step
+python3 cad/source/tophat.py --size 300 --pattern hex       # one size, one pattern
+python3 cad/source/tophat.py --size 300 --height 95         # taller wall
 ```
 
 Everything else (corner arm length, foam gap, slot dimensions, text, hole layout, pattern pitch)

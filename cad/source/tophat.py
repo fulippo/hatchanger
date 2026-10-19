@@ -1,24 +1,25 @@
 """
-HatChanger top hat: a raised canopy wall for a heated chamber (Voron 2.4 300).
+HatChanger top hat: a raised canopy wall for a heated chamber (Voron 2.4 250 / 300 / 350).
 
 The wall stands on the top extrusions with the same 20 mm footprint, so its top is a printed
 "2020": top face 20 mm wide with a T-slot on top, one on the outer face and one on the inner face
 (roll-in / spring T-nuts: panel clips, LED bars, tube guides... clamp on it as on the frame). The
 stock top panel sits on it.
 
-Pieces (all fit a 300 bed), separated by FOAM_GAP for closed-cell foam strips:
-  tophat_corner        x4  L, ARM x ARM
-  tophat_centre        x2  left / right side
-  tophat_centre_front  x1  "HatChanger" plaque
-  tophat_centre_rear   x1  bowden exits (8 holes, TPU grommets)
-  tophat_grommet_tpu / tophat_plug_tpu
+Pieces (each fits a 250 bed or larger), separated by FOAM_GAP for closed-cell foam strips:
+  tophat_<size>_corner        x4  L, ARM x ARM
+  tophat_<size>_centre        x2  left / right side
+  tophat_<size>_centre_front  x1  "HatChanger" plaque
+  tophat_<size>_centre_rear   x1  bowden exits (8 holes, TPU grommets)
+  tophat_grommet_tpu / tophat_plug_tpu   (all sizes)
 
-  python3 cad/source/tophat.py                      # honeycomb panels -> cad/stl, cad/step
+  python3 cad/source/tophat.py                      # every size, both patterns -> cad/stl, cad/step
+  python3 cad/source/tophat.py --size 300           # one size
   python3 cad/source/tophat.py --pattern voronoi    # voronoi panels (files *_voronoi)
 Each piece is screwed to the frame's top slot (M3 x 10 + roll-in T-nut): the screw drops down a
 shaft from the printed top slot, a long 2.5 mm hex key reaches it through the slot.
 
-Frame: x, y = 0 on the frame centre, front outer edge y = -230; z = 0 on top of the extrusions.
+Frame: x, y = 0 on the frame centre, front outer edge y = -F/2 (-230 on a 300); z = 0 on top of the extrusions.
 """
 import argparse, math
 from dataclasses import dataclass
@@ -31,7 +32,7 @@ from shapely.ops import unary_union
 
 @dataclass
 class C:
-    F: float = 460.0            # frame outer size (420 horizontals + 2 x 20)
+    size: int = 300             # Voron 2.4 build size: 250, 300, 350
     W: float = 20.0             # wall = extrusion width
     H: float = 85.0             # height (the panel sits on top): tube arcs peak at ~60
     ARM: float = 120.0          # corner arm length from the outer corner
@@ -70,6 +71,8 @@ class C:
     hole_cols: tuple = (-36.0, -12.0, 12.0, 36.0)
     hole_rows: tuple = (35.0, 51.0)
 
+    @property
+    def F(self): return self.size + 160.0     # frame outer size: horizontals (size + 120) + 2 x 20
     @property
     def h(self): return self.F / 2
     @property
@@ -234,6 +237,12 @@ def centre(c: C, kind="plain"):
         txt = (cq.Workplane("XZ", origin=(0, -h + c.plaque_depth, 0))
                .text(c.text, c.text_h, c.plaque_depth, fontPath=c.font, halign="center", valign="center"))
         tb = txt.val().BoundingBox()
+        room = (x1 - x0) - 2 * c.rib - 12 - 8          # plaque margins + at least a rib each side
+        if tb.xlen > room:                              # short centre (250): smaller letters
+            txt = (cq.Workplane("XZ", origin=(0, -h + c.plaque_depth, 0))
+                   .text(c.text, c.text_h * room / tb.xlen, c.plaque_depth, fontPath=c.font,
+                         halign="center", valign="center"))
+            tb = txt.val().BoundingBox()
         zc = (c.panel_z0 + c.panel_z1) / 2
         txt = txt.translate((0, 0, zc - (tb.zmin + tb.zmax) / 2))
         tb = txt.val().BoundingBox()
@@ -299,14 +308,19 @@ def to_print(s):
     return s.moved(cq.Location(cq.Vector(-(b.xmin + b.xmax) / 2, -(b.ymin + b.ymax) / 2, -b.zmin)))
 
 
-def export(c: C, stl_dir: Path, step_dir: Path):
+def export(c: C, stl_dir: Path, step_dir: Path, grommets=True):
     import sys
     sys.path.insert(0, str(Path(__file__).parent))
     from hatchanger_cad import export_stl
     stl_dir.mkdir(parents=True, exist_ok=True); step_dir.mkdir(parents=True, exist_ok=True)
-    p = pieces(c)
-    if c.pattern != "hex":     # only the walls change; grommets come with the default build
-        p = {f"{n}_{c.pattern}": s for n, s in p.items() if "tpu" not in n}
+    suffix = "" if c.pattern == "hex" else f"_{c.pattern}"
+    p = {}
+    for n, s in pieces(c).items():
+        if "tpu" in n:                 # the same for every size
+            if grommets:
+                p[n] = s
+        else:
+            p[n.replace("tophat_", f"tophat_{c.size}_") + suffix] = s
     for n, s in p.items():
         s2 = to_print(s)
         cq.exporters.export(cq.Workplane("XY").add(s2), str(step_dir / f"{n}.step"))
@@ -317,14 +331,21 @@ def export(c: C, stl_dir: Path, step_dir: Path):
     return p
 
 
+SIZES = (250, 300, 350)
+
 if __name__ == "__main__":
     here = Path(__file__).resolve().parent.parent
     ap = argparse.ArgumentParser(description="Build the HatChanger top hat (canopy walls + grommets)")
     ap.add_argument("--stl", default=str(here / "stl"))
     ap.add_argument("--step", default=str(here / "step"))
-    ap.add_argument("--pattern", default="hex", choices=["hex", "voronoi"])
+    ap.add_argument("--size", type=int, choices=SIZES, help="one build size (default: all)")
+    ap.add_argument("--pattern", choices=["hex", "voronoi"], help="one pattern (default: both)")
     ap.add_argument("--height", type=float, default=C.H, help="wall height above the frame (mm)")
     a = ap.parse_args()
-    c = C(pattern=a.pattern, H=a.height)
-    print(f"centre length {c.LC:.1f}, height {c.H:g}, panel z {c.panel_z0:g}..{c.panel_z1:g}")
-    export(c, Path(a.stl), Path(a.step))
+    first = True
+    for size in ([a.size] if a.size else SIZES):
+        for pattern in ([a.pattern] if a.pattern else ("hex", "voronoi")):
+            c = C(size=size, pattern=pattern, H=a.height)
+            print(f"--- {size} {pattern}: frame {c.F:g}, centre length {c.LC:.1f}, height {c.H:g}")
+            export(c, Path(a.stl), Path(a.step), grommets=first)
+            first = False
