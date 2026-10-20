@@ -1,5 +1,5 @@
 """
-HatChanger v0.39, filament-cutter variant (FilamATrix), Galileo 2 (G2E) integration.
+HatChanger v0.40, filament-cutter variant (FilamATrix), Galileo 2 (G2E) integration.
 
 Parts
   front_body_hatchanger : the FilamATrix G2E front body (cutter insert, after-gears sensor, arm
@@ -29,7 +29,7 @@ Numbers extracted from the G2E STEP (front_body):
   cable_cover top (x >= 11.7, y 0..13) ..................... z = 130.3
   cable_chain anchor (y >= 12.6) ........................... z <= 132.3
 """
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 import math
 import cadquery as cq
@@ -105,8 +105,9 @@ class P:
                                        #   concentric with the hole: ear width = 2 x this
     pogo_screw_pilot: float = 1.2      # self-tapping M1.4 (PA/PB 1.4) into the print
     pogo_screw_depth: float = 4.0      # pilot depth below the pocket floor -> M1.4 x 5
-    pogo_head_screws: tuple = (-1,)    # head: -X only. Under the +X hole the rear body's M3x50 tip
-                                       #   (and its insert) leaves ~1.5 mm of plastic. Hat: both sides
+    pogo_head_screws: tuple = (-1, 1)  # head: both ears (v0.40). Hat: both sides
+    pogo_head_screw_depth_px: float = 1.7  # head +X pilot: short, the bore for the rear body's M3x50 is ~1.9 below
+                                           #   (and its insert): an M1.4 x 3 there, x 5 on -X
     pogo_cone_wall: float = 0.9    # wall between the head pocket and the cone socket mouth
     pogo_tail_x: float = 3.0       # tail / solder-joint room under the connector: +-x, full width,
     pogo_head_tail_x: float = 5.0  #   (head, v0.39: +-5, to the edge of the +X M3 insert; the hat is hollow)
@@ -566,9 +567,9 @@ def front_body_hatchanger(p: P, stock: cq.Shape, g2_body: cq.Shape = None) -> cq
         for sx in (-1, 1):
             body = body.union(cyl_z(2 * p.pogo_cap_r, zf - 0.01, p.pogo_ear_z + 0.01, x=sx * xe,
                                     y=ay + pogo_yc(p)), clean=False)
-        if p.pogo_head_screws:
-            body = body.cut(pogo_screws(p, p.z_if, -1, p.pogo_head_screws, ay, raise_=p.pogo_ear_z),
-                            clean=False)
+        for sx in p.pogo_head_screws:
+            q = p if sx < 0 else replace(p, pogo_screw_depth=p.pogo_head_screw_depth_px)
+            body = body.cut(pogo_screws(q, p.z_if, -1, (sx,), ay, raise_=p.pogo_ear_z), clean=False)
     elif p.id_contacts:
         zf = p.z_if - mdepth                     # magnet pocket floor
         yc = ay + p.head_wire_y
