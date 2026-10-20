@@ -17,8 +17,8 @@ Pieces (each fits a 250 bed or larger), separated by FOAM_GAP for closed-cell fo
   python3 cad/tophat/source/tophat.py --size 300         # one size
   python3 cad/tophat/source/tophat.py --pattern voronoi  # voronoi panels (files *_voronoi)
   -> cad/tophat/stl/<size>/, cad/tophat/step/<size>/ (grommet and plug in cad/tophat/stl/, step/)
-Each piece is screwed to the frame's top slot (M3 x 10 + roll-in T-nut): the screw drops down a
-shaft from the printed top slot, a long 2.5 mm hex key reaches it through the slot.
+Each piece is screwed to the frame's top slot (M3 x 10 + roll-in T-nut) through its foot: the
+screw head sits in a pocket open on the outer face, reached with the short arm of an L-key.
 
 Frame: x, y = 0 on the frame centre, front outer edge y = -F/2 (-230 on a 300); z = 0 on top of the extrusions.
 """
@@ -46,19 +46,24 @@ class C:
     slot_cav: float = 11.0
     slot_depth: float = 6.1
     # frame screws
-    shaft_d: float = 7.0        # M3 head 5.5 drops through the 6.2 slot opening
     screw_d: float = 3.4
+    screw_pocket_w: float = 12.0   # pocket for the head and the key, open on the outer face
+    screw_pocket_h: float = 22.0
+    screw_pocket_depth: float = 15.5   # from the outer face (screw axis at 10): 4.5 mm skin
     floor: float = 5.0
     corner_screw: float = 60.0  # from the outer corner, on each arm
-    centre_screw: float = 35.0  # from each end of a centre
+    centre_screw: float = 22.0  # from each end of a centre (clear of the front plaque)
     # outer panel
     corner_border: float = 20.0 # plain column at the corners (the vertical extrusion's footprint)
     end_border: float = 5.0
     panel_z0: float = 7.0
     panel_gap_top: float = 4.0  # below the top band
     panel_r: float = 3.0
-    panel_depth: float = 1.0    # panel recess (rib tops)
-    cell_depth: float = 2.5     # cells, below the panel floor
+    panel_depth: float = 14.0   # the panel is a tray in the outer face (rib tops): the wall is
+                                #   hollowed from the outside like the canopy, the inner side
+                                #   stays flat. Centres print lying on it; the corners print
+                                #   upright, the tray's roof slopes at 45°
+    cell_depth: float = 2.5     # honeycomb cells in the tray floor: 3.5 mm skin behind them
     pitch: float = 22.0         # hex pitch
     rib: float = 3.0
     pattern: str = "hex"        # hex | voronoi
@@ -115,12 +120,14 @@ def slots_front(c: C, x0, x1, top_from=None, inner_from=None, outer_from=None, b
     return cuts
 
 
-def shafts_front(c: C, xs):
+def screws_front(c: C, xs, roof=False):
+    """Frame screws through the foot (floor thick), heads in pockets open on the outer face."""
     h, W = c.h, c.W
     out = []
     for x in xs:
-        out.append(cq.Solid.makeCylinder(c.shaft_d / 2, c.H, cq.Vector(x, -h + W / 2, c.floor)))
         out.append(cq.Solid.makeCylinder(c.screw_d / 2, c.floor + 2, cq.Vector(x, -h + W / 2, -1)))
+        pk = sbox(x - c.screw_pocket_w / 2, c.floor, x + c.screw_pocket_w / 2, c.floor + c.screw_pocket_h)
+        out.append(tray_pocket(c, pk, roof, depth=c.screw_pocket_depth))
     return out
 
 
@@ -185,11 +192,34 @@ def cells(c: C, x0, x1, z0, z1, keep_out=None, seed=1):
     return out
 
 
-def panel_front(c: C, x0, x1, keep_out=None, seed=1):
+def tray_pocket(c: C, g: Polygon, roof=False, depth=None):
+    """The tray: straight prism, or (roof) ∩ the same polygon swept inwards and down at 45°,
+    so its roof slopes down at 45° from the outer face (printable upright). g must be convex
+    in z (it is: rectangles and rounded rectangles)."""
+    h = c.h
+    y0, y1 = -h - 1, -h + (c.panel_depth if depth is None else depth)
+    straight = xz_prism(g, y0, y1)
+    if not roof:
+        return straight
+    lift = 1                                       # the roof starts sloping at the outer face
+    pts = [cq.Vector(x, y0, z + lift) for x, z in list(g.exterior.coords)[:-1]]
+    face = cq.Face.makeFromWires(cq.Wire.makePolygon(pts, close=True))
+    L = y1 - y0
+    oblique = cq.Solid.extrudeLinear(face, cq.Vector(0, L, -L))
+    return straight.intersect(oblique)
+
+
+def panel_front(c: C, x0, x1, keep_out=None, seed=1, roof=False, solid=None):
     """Cutters for a patterned panel on the outer face of a front-side wall between x0 and x1."""
     h = c.h
     z0, z1 = c.panel_z0, c.panel_z1
-    tools = [xz_prism(rrect(x0, x1, z0, z1, c.panel_r), -h - 1, -h + c.panel_depth)]
+    tray = rrect(x0, x1, z0, z1, c.panel_r)        # keep_out clears the cells, solid the tray
+    if solid is not None:
+        tray = tray.difference(solid)
+    tools = []
+    for g in getattr(tray, "geoms", [tray]):
+        if g.geom_type == "Polygon" and g.area > 20:
+            tools.append(tray_pocket(c, g, roof))
     for g in cells(c, x0, x1, z0, z1, keep_out, seed):
         tools.append(xz_prism(g, -h - 1, -h + c.panel_depth + c.cell_depth))
     return tools
@@ -219,9 +249,9 @@ def corner(c: C):
     s = body(c, fp)
     xs = -h + c.corner_screw
     arm = slots_front(c, -h, -h + A, top_from=-h + W / 2 - c.slot_cav / 2, inner_from=-h + W - c.slot_depth,
-                      outer_from=-h - 1, breaks=(xs,))
-    arm += shafts_front(c, (xs,))
-    arm += panel_front(c, -h + c.corner_border, -h + A - c.end_border)
+                      outer_from=-h - 1)
+    arm += screws_front(c, (xs,), roof=True)
+    arm += panel_front(c, -h + c.corner_border, -h + A - c.end_border, roof=True)
     tools = arm + [mirror_diag(t) for t in arm]
     return cut_all(s, tools)
 
@@ -231,43 +261,45 @@ def centre(c: C, kind="plain"):
     fp = [(-L / 2, -h), (L / 2, -h), (L / 2, -h + W), (-L / 2, -h + W)]
     s = body(c, fp)
     xs = (-L / 2 + c.centre_screw, L / 2 - c.centre_screw)
-    tools = slots_front(c, -L / 2, L / 2, breaks=xs) + shafts_front(c, xs)
+    tools = slots_front(c, -L / 2, L / 2) + screws_front(c, xs)
     keep, extra, add = None, [], []
     x0, x1 = -L / 2 + c.end_border, L / 2 - c.end_border
+    post = []                                      # cut after the bosses are added
     if kind == "front":
-        txt = (cq.Workplane("XZ", origin=(0, -h + c.plaque_depth, 0))
-               .text(c.text, c.text_h, c.plaque_depth, fontPath=c.font, halign="center", valign="center"))
+        # letters standing on the tray floor, up to the outer face
+        yt, dt = -h + c.panel_depth + 0.3, c.panel_depth + 0.3
+        txt = (cq.Workplane("XZ", origin=(0, yt, 0))
+               .text(c.text, c.text_h, dt, fontPath=c.font, halign="center", valign="center"))
         tb = txt.val().BoundingBox()
-        room = (x1 - x0) - 2 * c.rib - 12 - 8          # plaque margins + at least a rib each side
+        room = (x1 - x0) - 2 * c.rib - 12 - 8          # margins + at least a rib each side
         if tb.xlen > room:                              # short centre (250): smaller letters
-            txt = (cq.Workplane("XZ", origin=(0, -h + c.plaque_depth, 0))
-                   .text(c.text, c.text_h * room / tb.xlen, c.plaque_depth, fontPath=c.font,
+            txt = (cq.Workplane("XZ", origin=(0, yt, 0))
+                   .text(c.text, c.text_h * room / tb.xlen, dt, fontPath=c.font,
                          halign="center", valign="center"))
             tb = txt.val().BoundingBox()
         zc = (c.panel_z0 + c.panel_z1) / 2
         txt = txt.translate((0, 0, zc - (tb.zmin + tb.zmax) / 2))
         tb = txt.val().BoundingBox()
-        pl = rrect(tb.xmin - 6, tb.xmax + 6, c.panel_z0 + c.rib, c.panel_z1 - c.rib, 2.0)
-        keep = pl.buffer(c.rib)
-        extra.append(xz_prism(pl, -h - 1, -h + c.plaque_depth))
+        keep = rrect(tb.xmin - 6, tb.xmax + 6, c.panel_z0, c.panel_z1, 2.0)   # no cells behind the text
         add.append(txt.val())
     if kind == "rear":
+        # full-depth bosses: the grommets need the whole 20 mm
         zs, xs_h = c.hole_rows, c.hole_cols
-        r = c.hole_d / 2 + 3
-        pl = rrect(min(xs_h) - r - 1, max(xs_h) + r + 1, min(zs) - r, max(zs) + r, 3.0)
-        keep = pl.buffer(c.rib)
-        extra.append(xz_prism(pl, -h - 1, -h + c.panel_depth))
+        rb = c.hole_d / 2 + 4.5                   # (not tangent to the tray edge at z 61)
+        keep = unary_union([Point(x, z).buffer(rb + c.rib) for z in zs for x in xs_h])
+        bosses = unary_union([Point(x, z).buffer(rb, resolution=16) for z in zs for x in xs_h])
         for z in zs:
             for x in xs_h:
-                extra.append(cq.Solid.makeCylinder(c.hole_d / 2, W + 2, cq.Vector(x, -h - 1, z), cq.Vector(0, 1, 0)))
-                # chamfer at the outer mouth
-                extra.append(cq.Solid.makeCone(c.hole_d / 2 + 1.2, c.hole_d / 2, 1.2,
-                                               cq.Vector(x, -h + c.panel_depth - 0.01, z), cq.Vector(0, 1, 0)))
-    tools += panel_front(c, x0, x1, keep) + extra
+                hole = cq.Solid.makeCylinder(c.hole_d / 2, W + 2, cq.Vector(x, -h - 1, z), cq.Vector(0, 1, 0))
+                mouth = cq.Solid.makeCone(c.hole_d / 2 + 1.2, c.hole_d / 2, 1.2,
+                                          cq.Vector(x, -h - 0.01, z), cq.Vector(0, 1, 0))
+                for t_ in (hole, mouth):           # turn the seam away from the mesh's other edges
+                    post.append(t_.rotate(cq.Vector(x, 0, z), cq.Vector(x, 1, z), 37))
+    tools += panel_front(c, x0, x1, keep, solid=bosses if kind == "rear" else None) + extra
     s = cut_all(s, tools)
-    for a in add:
-        s = s.fuse(a)
-    return s.clean()
+    if add:
+        s = s.fuse(*add, glue=False).clean()
+    return cut_all(s, post)
 
 
 def grommet(c: C, plug=False):
@@ -303,8 +335,11 @@ def assembly(p):
     return out
 
 
-def to_print(s):
-    """Lay a piece on the bed at the origin (as printed: bottom down)."""
+def to_print(s, lay_flat=False):
+    """Place a piece on the bed at the origin as printed: bottom down, or (lay_flat, the
+    straight centres) lying on its flat inner face with the pattern up."""
+    if lay_flat:
+        s = s.rotate(cq.Vector(0, 0, 0), cq.Vector(1, 0, 0), -90)
     b = s.BoundingBox()
     return s.moved(cq.Location(cq.Vector(-(b.xmin + b.xmax) / 2, -(b.ymin + b.ymax) / 2, -b.zmin)))
 
@@ -325,7 +360,7 @@ def export(c: C, stl_dir: Path, step_dir: Path, grommets=True):
         else:
             p[n.replace("tophat_", f"tophat_{c.size}_") + suffix] = s
     for n, s in p.items():
-        s2 = to_print(s)
+        s2 = to_print(s, lay_flat="centre" in n)
         sub = "" if "tpu" in n else str(c.size)
         cq.exporters.export(cq.Workplane("XY").add(s2), str(step_dir / sub / f"{n}.step"))
         export_stl(s2, stl_dir / sub / f"{n}.stl", deflection=0.03)
