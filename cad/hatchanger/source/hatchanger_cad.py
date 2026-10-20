@@ -84,6 +84,7 @@ class P:
     pogo: bool = True
     pogo_l: float = 18.32          # connector length WITH its mounting ears (kept: glue area, and
                                    #   the pocket is cut full length so the ears can sit anywhere in Z)
+    pogo_body_l: float = 15.4      # body length without the ears
     pogo_w: float = 4.05           # body width (Y)
     pogo_h: float = 4.13           # body height, face to back (without pins / tails)
     pogo_tail: float = 1.4         # solder tails below the back
@@ -94,7 +95,8 @@ class P:
                                    #   1.0 and are pushed flush, so 0.2 total keeps 0.8 of spring travel
     # ear screws: Ø1.6 holes in the ears, 1.5 mm in from each ear tip. The ears are taken to be flush
     # with the back of the body, so they rest on the pocket floor and the pilot starts there.
-    pogo_ear_hole_inset: float = 1.5   # hole centre from the ear's outer end
+    pogo_ear_hole_inset: float = 1.5   # hole centre from the ear's outer end. The ear ends are round,
+                                       #   concentric with the hole: ear width = 2 x this
     pogo_screw_pilot: float = 1.2      # self-tapping M1.4 (PA/PB 1.4) into the print
     pogo_screw_depth: float = 4.0      # pilot depth below the pocket floor -> M1.4 x 5
     pogo_head_screws: tuple = (-1,)    # head: -X only. Under the +X hole the rear body's M3x50 tip
@@ -365,11 +367,18 @@ def pogo_pocket(p: P, z_face: float, down: int, y_axis: float = 0.0) -> cq.Workp
     """Connector pocket + tail room, from the face plane z_face into the part (down = -1: into the
     head below the face; +1: into the hat above it). Cut 1 mm past the face."""
     yc = y_axis + pogo_yc(p)
-    hl, hw = p.pogo_l / 2 + p.pogo_clear, p.pogo_w / 2 + p.pogo_clear
+    c = p.pogo_clear
+    bl, hw = p.pogo_body_l / 2 + c, p.pogo_w / 2 + c
+    xe = p.pogo_l / 2 - p.pogo_ear_hole_inset           # ear hole centre (|x|)
+    re = p.pogo_ear_hole_inset + c                       # round ear end
     d = p.pogo_h + p.pogo_recess
     t = p.pogo_tail + p.pogo_tail_room
     a, b = sorted((z_face - down * 1.0, z_face + down * d))
-    cut = box(-hl, hl, yc - hw, yc + hw, a, b)
+    cut = box(-bl, bl, yc - hw, yc + hw, a, b)
+    for sx in (-1, 1):                                  # ears: straight from the body, round end
+        x0, x1 = sorted((sx * (bl - 0.5), sx * xe))
+        cut = cut.union(box(x0, x1, yc - re, yc + re, a, b))
+        cut = cut.union(cyl_z(2 * re, a, b - a, x=sx * xe, y=yc))
     a, b = sorted((z_face + down * (d - 0.01), z_face + down * (d + t)))
     return cut.union(box(-p.pogo_tail_x, p.pogo_tail_x, yc - hw, yc + hw, a, b))
 
