@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.1](https://github.com/fulippo/hatchanger/compare/v0.3.0...v0.3.1) (2026-10-20)
+
+
+### Bug Fixes
+
+* **klipper:** retract with the hat set down in its rack ([#16](https://github.com/fulippo/hatchanger/issues/16)) ([a5610ed](https://github.com/fulippo/hatchanger/commit/a5610ed465f378f5369afddc163002f0f39cc69a))
+
 ## [0.3.0](https://github.com/fulippo/hatchanger/compare/v0.2.1...v0.3.0) (2026-10-19)
 
 
