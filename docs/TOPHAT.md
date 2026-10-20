@@ -56,8 +56,8 @@ Every piece fits a 250 mm bed. Print in ASA/ABS, no supports, as exported:
 | Part | Qty | Where |
 |---|---:|---|
 | `tophat_<size>_corner` | 4 | Corners: one design, rotated (120 × 120 × 85 mm, the same for every size) |
-| `tophat_<size>_centre` | 2 | Left and right sides |
-| `tophat_<size>_centre_front` | 1 | Front, "HatChanger" plaque |
+| `tophat_<size>_centre` | 2 (3) | Left and right sides (and the front, for a front without text) |
+| `tophat_<size>_centre_front` | 1 (0) | Front, "HatChanger" lettering |
 | `tophat_<size>_centre_rear` | 1 | Rear, bowden exits |
 | `tophat_grommet_tpu` | 1 per tube | TPU 95A, in the rear holes, flange outside (all sizes) |
 | `tophat_plug_tpu` | 1 per unused hole | TPU 95A (all sizes) |
@@ -69,6 +69,11 @@ Every piece fits a 250 mm bed. Print in ASA/ABS, no supports, as exported:
 | 350 | 510 mm | 265 × 85 × 20 mm | 1.3 kg |
 
 The `_voronoi` files are the same pieces with a voronoi pattern instead of the honeycomb.
+
+For a front without the lettering, print a third `tophat_<size>_centre` instead of
+`tophat_<size>_centre_front`: same piece, same screws, with the pattern running straight through.
+
+![Front without lettering](images/tophat_front_plain.png)
 
 ## Hardware
 
