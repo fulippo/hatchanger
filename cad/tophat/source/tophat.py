@@ -258,10 +258,15 @@ def mirror_diag(s):
     return s.mirror(cq.Vector(1, -1, 0), cq.Vector(0, 0, 0))
 
 
-def body(c: C, footprint):
+def body(c: C, footprint, ends):
+    """Extruded footprint, top edges chamfered except at the piece ends (the joints): there the
+    two neighbours meet flush, without a V across the top. ends = [(axis, value), ...]."""
     s = cq.Workplane("XY").polyline(footprint).close().extrude(c.H)
-    s = s.edges(">Z").chamfer(c.top_chamfer)
-    return s.val()
+    def at_end(e):
+        m = e.Center()
+        return any(abs((m.x if ax == "x" else m.y) - v) < 1e-3 for ax, v in ends)
+    top = [e for e in s.edges(">Z").vals() if not at_end(e)]
+    return s.newObject(top).chamfer(c.top_chamfer).val()
 
 
 def cut_all(s, tools):
@@ -274,7 +279,7 @@ def corner(c: C):
     """Front-left corner, both arms."""
     h, W, A, k = c.h, c.W, c.ARM, c.corner_chamfer
     fp = [(-h + k, -h), (-h + A, -h), (-h + A, -h + W), (-h + W, -h + W), (-h + W, -h + A), (-h, -h + A), (-h, -h + k)]
-    s = body(c, fp)
+    s = body(c, fp, ends=[("x", -h + A), ("y", -h + A)])
     xs = -h + c.corner_screw
     arm = slots_front(c, -h, -h + A, top_from=-h + 1, inner_from=-h + W - c.slot_depth - 2, mitre=True)
     arm += screws_front(c, (xs,))
@@ -286,7 +291,7 @@ def corner(c: C):
 def centre(c: C, kind="plain"):
     h, W, L = c.h, c.W, c.LC
     fp = [(-L / 2, -h), (L / 2, -h), (L / 2, -h + W), (-L / 2, -h + W)]
-    s = body(c, fp)
+    s = body(c, fp, ends=[("x", -L / 2), ("x", L / 2)])
     xs = (-L / 2 + c.centre_screw, L / 2 - c.centre_screw)
     tools = slots_front(c, -L / 2, L / 2) + screws_front(c, xs)
     keep, extra, add = None, [], []
