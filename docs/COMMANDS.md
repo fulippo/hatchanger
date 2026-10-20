@@ -23,10 +23,14 @@ turning the extruder (pull the filament out of the hats first).
 
 1. If the sensor sees filament, the head presses the cutting arm against its pin. The filament
    is cut about 38 mm below the extruder gears.
-2. The extruder pulls the cut end up until the sensor clears, then moves it a fixed distance to
-   just below the gears, where it is still gripped.
-3. The head slides the hat into its rack's channel up to the plate (the last few millimetres
-   slowly) and sets it on the lower lips.
+2. The head slides the hat into its rack's channel up to the plate (the last few millimetres
+   slowly) and sets it on the lower lips. The filament is still in the gears.
+3. The extruder pulls the cut end up until the sensor clears, then moves it a fixed distance to
+   just below the gears, where it is still gripped. This happens in the rack on purpose: the
+   bowden drags on the filament and pulls the hat up, and the rack's upper lips hold it down
+   whatever the bowden's angle (the head's magnets alone don't, at a steep angle).
+   If this step fails, the head stays in the rack under the hat and every HatChanger command
+   refuses to move. Fix the cause, then run `HAT_DOCK` again: it finishes from step 3.
 4. The head moves down while the extruder reverses by the same amount. The filament stays still
    in the hat, the magnets let go and the tip slides out of the gears.
 

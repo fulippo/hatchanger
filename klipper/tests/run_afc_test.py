@@ -94,7 +94,7 @@ def main() -> int:
         dst.symlink_to(src)
     # (scenario, expected AFC cut_total updates): any error ends a Klipper batch run, so a
     # scenario that triggers one on purpose must be last in its file or in a file of its own
-    scenarios = [("afc_test.gcode", 3), ("afc_test_eject.gcode", 0)]
+    scenarios = [("afc_test.gcode", 3), ("afc_test_eject.gcode", 0), ("afc_test_dock_resume.gcode", 0)]
     ok = True
     try:
         for name, want_cuts in scenarios:

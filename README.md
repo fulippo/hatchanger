@@ -36,7 +36,8 @@ cuts the filament before each unload, so no tip forming is needed.
 ## How it works
 
 1. **Dock (`HAT_DOCK`):** the head presses the FilamATrix arm against a pin to cut the filament,
-   retracts the cut end to just below the gears, slides the hat into its rack, then moves down
+   slides the hat into its rack, retracts the cut end to just below the gears (the rack holds the
+   hat down against the bowden's drag), then moves down
    while the extruder reverses, so the filament stays in the hat and slips out of the gears.
 2. **Pick up (`HAT_PICKUP`):** the head rises under the next hat with the extruder turning in
    sync, so the gears catch the hanging filament as the hat seats. The sensor confirms the grab,
