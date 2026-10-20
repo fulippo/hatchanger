@@ -1,12 +1,13 @@
 """
-HatChanger v0.32, filament-cutter variant (FilamATrix), Galileo 2 (G2E) integration.
+HatChanger v0.33, filament-cutter variant (FilamATrix), Galileo 2 (G2E) integration.
 
 Parts
   front_body_hatchanger : the FilamATrix G2E front body (cutter insert, after-gears sensor, arm
-                   clearance) with our top: raised flat interface pad, magnets, 2 dowel pins,
-                   cone socket for the stinger. Stock G2E board mount (any board that fits it).
+                   clearance) with our top: raised flat interface pad, 2 dowel pins, cone socket
+                   for the stinger, pocket for the pin half of the magnetic pogo connector (hat ID). Stock G2E board mount (any board that fits it).
   hat            : ECAS04 on top, continuous 4x2 bowden through it (the stinger), V-ridge rails
-                   with a tapered nose, magnets; locates on the dowels.
+                   with a tapered nose, pad half of the pogo connector + ID resistor; locates on
+                   the dowels.
   stinger_gauge  : jig that sets how far the bowden sticks out of the hat.
   hat_rack       : V-channel dock (lower + upper 45 deg lips) bolted to the top extrusion.
   hat_rack_spacer_<L> : optional block between rack and extrusion, moves the rack L mm towards
@@ -76,6 +77,30 @@ class P:
     id_slot_z: tuple = (4.3, 6.8)  #   back face; 1/4 W axial resistor: body ~2.3 x 6.3
     id_lead_d: float = 1.0         # lead slit width: one per magnet pocket, from the slot down through the
     id_lead_x: float = 5.6         #   pocket, open at the back and bottom faces, at this |x|
+    # hat ID through a 2-pin MAGNETIC pogo connector (v0.33): pin half in the head, pad half in the
+    # hat, behind the cone socket, long axis along X. Its own magnets replace the two 6x3 interface
+    # magnets (and their pockets, wire channel, resistor slot); the hat's resistor is soldered to the
+    # pad half's tails. False = v0.32: the magnets are the contacts (id_contacts).
+    pogo: bool = True
+    pogo_l: float = 18.32          # connector length WITH its mounting ears (kept: glue area, and
+                                   #   the pocket is cut full length so the ears can sit anywhere in Z)
+    pogo_w: float = 4.05           # body width (Y)
+    pogo_h: float = 4.13           # body height, face to back (without pins / tails)
+    pogo_tail: float = 1.4         # solder tails below the back
+    pogo_pitch: float = 2.54       # 2 pins, +-pitch/2 about the centre
+    pogo_clear: float = 0.1        # pocket clearance per side (X, Y)
+    pogo_recess: float = 0.1       # connector face this far below the interface face in BOTH halves:
+                                   #   a connector standing proud would rock the hat; the pins stick out
+                                   #   1.0 and are pushed flush, so 0.2 total keeps 0.8 of spring travel
+    pogo_cone_wall: float = 0.9    # wall between the head pocket and the cone socket mouth
+    pogo_tail_x: float = 3.0       # tail / solder-joint room under the connector: +-x, full width,
+    pogo_tail_room: float = 0.8    #   pogo_tail + this deep
+    pogo_wire_slot: float = 1.4    # head: wire slot behind the pocket (Y), from the tails up to the
+                                   #   head_wire_z channel, which runs out on the +X side as before
+    pogo_hat_wall: float = 1.5     # hat: wall behind the pocket; the hat grows at the back to make it
+    pogo_res_x: float = 4.6        # hat: resistor cavity above the tails (1/4 W axial, body ~2.3 x 6.3,
+    pogo_res_w: float = 3.2        #   leads bent down onto the tails): +-x, width (Y), height
+    pogo_res_h: float = 3.0
     pin_d: float = 3.0             # steel dowel pins, 3x8 (ISO 8734 m6)
     pin_hole_press: float = 2.95   # press fit in the body (tune)
     pin_depth: float = 4.2         # a cavity sits ~5 mm under the +X pin: do not go deeper
@@ -317,6 +342,31 @@ def cyl_z(d, z0, h, x=0.0, y=0.0):
 
 
 # ======================================================================================
+def pogo_yc(p: P) -> float:
+    """Y (rel. the filament axis) of the pogo connector centre: just behind the cone socket mouth."""
+    return p.cone_d0 / 2 + p.cone_clear + p.pogo_cone_wall + p.pogo_clear + p.pogo_w / 2
+
+
+def hat_back_ext(p: P) -> float:
+    """How far the hat's back face moves back so the pogo pocket keeps pogo_hat_wall behind it."""
+    if not p.pogo:
+        return 0.0
+    return max(0.0, pogo_yc(p) + p.pogo_w / 2 + p.pogo_clear + p.pogo_hat_wall - p.cart_d / 2)
+
+
+def pogo_pocket(p: P, z_face: float, down: int, y_axis: float = 0.0) -> cq.Workplane:
+    """Connector pocket + tail room, from the face plane z_face into the part (down = -1: into the
+    head below the face; +1: into the hat above it). Cut 1 mm past the face."""
+    yc = y_axis + pogo_yc(p)
+    hl, hw = p.pogo_l / 2 + p.pogo_clear, p.pogo_w / 2 + p.pogo_clear
+    d = p.pogo_h + p.pogo_recess
+    t = p.pogo_tail + p.pogo_tail_room
+    a, b = sorted((z_face - down * 1.0, z_face + down * d))
+    cut = box(-hl, hl, yc - hw, yc + hw, a, b)
+    a, b = sorted((z_face + down * (d - 0.01), z_face + down * (d + t)))
+    return cut.union(box(-p.pogo_tail_x, p.pogo_tail_x, yc - hw, yc + hw, a, b))
+
+
 def load_g2_part(step_path, suffix):
     """Return (shape, all_parts) for the first G2E STEP part whose name ends with suffix."""
     from OCP.STEPCAFControl import STEPCAFControl_Reader
@@ -437,11 +487,24 @@ def front_body_hatchanger(p: P, stock: cq.Shape, g2_body: cq.Shape = None) -> cq
     px, py = p.pin_xy
     mdepth = p.magnet_h + (p.head_wire_gap if p.id_contacts else 0.1)
     for s in (-1, 1):
-        body = body.cut(cyl_z(p.magnet_d + p.magnet_fit, p.z_if - mdepth,
-                              mdepth + 1, x=s * mx, y=ay + my), clean=False)
+        if not p.pogo:
+            body = body.cut(cyl_z(p.magnet_d + p.magnet_fit, p.z_if - mdepth,
+                                  mdepth + 1, x=s * mx, y=ay + my), clean=False)
         body = body.cut(cyl_z(p.pin_hole_press, p.z_if - p.pin_depth, p.pin_depth + 1,
                               x=s * px, y=ay + py), clean=False)
-    if p.id_contacts:
+    if p.pogo:
+        # pin half, pins up, face pogo_recess below the pad. The two wires leave the tails through a
+        # slot behind the pocket, rise to the head_wire_z channel and run out on the +X side
+        # (behind the cable cover), like the v0.32 magnet wires.
+        cut = pogo_pocket(p, p.z_if, -1, ay)
+        yb = ay + pogo_yc(p) + p.pogo_w / 2 + p.pogo_clear
+        zb = p.z_if - p.pogo_h - p.pogo_recess - p.pogo_tail - p.pogo_tail_room
+        c0, c1 = p.head_wire_z
+        ws = p.pogo_wire_slot
+        cut = cut.union(box(-p.pogo_tail_x, p.pogo_tail_x, yb - 0.01, yb + ws, zb, p.z_if + c1))
+        cut = cut.union(box(-p.pogo_tail_x, p.pad_x + 2, yb - 0.01, yb + ws, p.z_if + c0, p.z_if + c1))
+        body = body.cut(cut, clean=False)
+    elif p.id_contacts:
         zf = p.z_if - mdepth                     # magnet pocket floor
         yc = ay + p.head_wire_y
         w, (c0, c1) = p.head_wire_w, p.head_wire_z
@@ -685,8 +748,9 @@ def _octagon(w: float, d: float, c: float, z: float) -> cq.Wire:
 
 
 def _footprint(p: P, z: float) -> cq.Wire:
+    e = hat_back_ext(p)                       # pogo: the back face moves back by e
     if p.hat_facets:
-        return _octagon(p.cart_w, p.cart_d, p.cart_chamfer, z)
+        return _octagon(p.cart_w, p.cart_d + e, p.cart_chamfer, z).translate((0, e / 2, 0))
     sk = cq.Sketch().rect(p.cart_w, p.cart_d).vertices().fillet(p.cart_r)
     return sk._faces.Faces()[0].outerWire().translate((0, 0, z))
 
@@ -803,9 +867,17 @@ def cartridge(p: P) -> cq.Workplane:
     px, py = p.pin_xy
     hp = p.pin_protrusion + p.pin_hole_extra
     mdepth = p.magnet_h + (p.hat_wire_gap if p.id_contacts else 0.0)
-    for s in (-1, 1):
-        body = body.cut(cyl_z(p.magnet_d + p.magnet_fit, -1, mdepth + 1, x=s * mx, y=my))
-    if p.id_contacts:                                          # resistor slot from the back face
+    if p.pogo:
+        # pad half, pads down, face pogo_recess above the hat face; the resistor sits in a cavity
+        # above the tails, soldered across them
+        body = body.cut(pogo_pocket(p, 0.0, 1))
+        z0 = p.pogo_h + p.pogo_recess + p.pogo_tail
+        yc, hw = pogo_yc(p), p.pogo_res_w / 2
+        body = body.cut(box(-p.pogo_res_x, p.pogo_res_x, yc - hw, yc + hw, z0, z0 + p.pogo_res_h))
+    else:
+        for s in (-1, 1):
+            body = body.cut(cyl_z(p.magnet_d + p.magnet_fit, -1, mdepth + 1, x=s * mx, y=my))
+    if p.id_contacts and not p.pogo:                                          # resistor slot from the back face
         z0, z1 = p.id_slot_z
         # stadium profile (round ends) seen from the back, run in Y from id_slot_y0 out of the back face
         slot = (cq.Workplane("XZ").center(0, (z0 + z1) / 2).slot2D(2 * p.id_slot_x, z1 - z0)
