@@ -270,7 +270,7 @@ def corner(c: C):
     fp = [(-h + k, -h), (-h + A, -h), (-h + A, -h + W), (-h + W, -h + W), (-h + W, -h + A), (-h, -h + A), (-h, -h + k)]
     s = body(c, fp)
     xs = -h + c.corner_screw
-    arm = slots_front(c, -h, -h + A, top_from=-h + W / 2 - c.slot_cav / 2, inner_from=-h + W - c.slot_depth)
+    arm = slots_front(c, -h, -h + A, top_from=-h + W / 2 - c.slot_open / 2, inner_from=-h + W - c.slot_depth)
     arm += screws_front(c, (xs,))
     arm += panel_front(c, -h + c.corner_border, -h + A, roof=True, open_ends=(False, True))
     tools = arm + [mirror_diag(t) for t in arm]
