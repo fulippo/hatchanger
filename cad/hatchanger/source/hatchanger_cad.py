@@ -1,5 +1,5 @@
 """
-HatChanger v0.38, filament-cutter variant (FilamATrix), Galileo 2 (G2E) integration.
+HatChanger v0.39, filament-cutter variant (FilamATrix), Galileo 2 (G2E) integration.
 
 Parts
   front_body_hatchanger : the FilamATrix G2E front body (cutter insert, after-gears sensor, arm
@@ -96,9 +96,9 @@ class P:
     pogo_pitch: float = 2.54       # 2 pins, +-pitch/2 about the centre
     pogo_clear: float = 0.2        # pocket clearance per side (X, Y). v0.35: 0.2 (0.1 was too tight with
                                    #   the slicer seam on the hat's vertical pocket walls)
-    pogo_recess: float = 0.1       # connector face this far below the interface face in BOTH halves:
-                                   #   a connector standing proud would rock the hat; the pins stick out
-                                   #   1.0 and are pushed flush, so 0.2 total keeps 0.8 of spring travel
+    pogo_recess: float = 0.1       # pocket floor this much deeper than the body height. The connector
+                                   #   rests on its ears (pogo_ear_z), not on the floor, so this only
+                                   #   keeps the body and the lip round its magnets clear of it
     # ear screws: Ø1.6 holes in the ears, 1.5 mm in from each ear tip. The ears are taken to be flush
     # with the back of the body, so they rest on the pocket floor and the pilot starts there.
     pogo_ear_hole_inset: float = 1.5   # hole centre from the ear's outer end. The ear ends are round,
@@ -109,6 +109,7 @@ class P:
                                        #   (and its insert) leaves ~1.5 mm of plastic. Hat: both sides
     pogo_cone_wall: float = 0.9    # wall between the head pocket and the cone socket mouth
     pogo_tail_x: float = 3.0       # tail / solder-joint room under the connector: +-x, full width,
+    pogo_head_tail_x: float = 5.0  #   (head, v0.39: +-5, to the edge of the +X M3 insert; the hat is hollow)
     pogo_tail_room: float = 0.8    #   pogo_tail + this deep
     pogo_wire_slot: float = 1.4    # head: wire slot behind the pocket (Y), from the tails up to the
                                    #   head_wire_z channel, which runs out on the +X side as before
@@ -116,9 +117,10 @@ class P:
     # hat: above the pocket floor the whole connector outline is hollow (tails, solder joints, ID
     # resistor), except a boss under each ear's screw hole. The pad half rests on its ears there.
     pogo_res_h: float = 3.0        # cavity height above the tails
-    pogo_ear_z: float = 0.8        # hat: the ear bosses (and the screw pilots) stand this far above the
-                                   #   pocket floor, so the pad half sits at its nominal depth (v0.36;
-                                   #   with the bosses at the floor it sat 0.8 mm too deep)
+    pogo_ear_z: float = 0.9        # head and hat: the connector rests on its ears, on rings round the screw
+                                   #   holes that stand this far proud of the pocket floor. 0.9 puts its face
+                                   #   flush with the interface (v0.39; v0.36-v0.38: 0.8 in the hat only,
+                                   #   0.1 below the face)
     pogo_cap_r: float = 1.2        # radius of the raised part of each boss (0.6 wall to the pilot): a
                                    #   plastic lip round the connector's magnets, under the body next to
                                    #   each ear, sits on anything wider (v0.38; v0.37 raised the full 1.75)
@@ -379,7 +381,7 @@ def hat_back_ext(p: P) -> float:
     return max(0.0, pogo_yc(p) + p.pogo_w / 2 + p.pogo_clear + p.pogo_hat_wall - p.cart_d / 2)
 
 
-def pogo_pocket(p: P, z_face: float, down: int, y_axis: float = 0.0) -> cq.Workplane:
+def pogo_pocket(p: P, z_face: float, down: int, y_axis: float = 0.0, tail_x: float = None) -> cq.Workplane:
     """Connector pocket + tail room, from the face plane z_face into the part (down = -1: into the
     head below the face; +1: into the hat above it). Cut 1 mm past the face."""
     d = p.pogo_h + p.pogo_recess
@@ -388,7 +390,8 @@ def pogo_pocket(p: P, z_face: float, down: int, y_axis: float = 0.0) -> cq.Workp
     cut = pogo_outline(p, a, b, y_axis)
     yc, hw = y_axis + pogo_yc(p), p.pogo_w / 2 + p.pogo_clear
     a, b = sorted((z_face + down * (d - 0.01), z_face + down * (d + t)))
-    return cut.union(box(-p.pogo_tail_x, p.pogo_tail_x, yc - hw, yc + hw, a, b))
+    tx = p.pogo_tail_x if tail_x is None else tail_x
+    return cut.union(box(-tx, tx, yc - hw, yc + hw, a, b))
 
 
 def pogo_outline(p: P, z0: float, z1: float, y_axis: float = 0.0) -> cq.Workplane:
@@ -548,9 +551,9 @@ def front_body_hatchanger(p: P, stock: cq.Shape, g2_body: cq.Shape = None) -> cq
         # pin half, pins up, face pogo_recess below the pad. The two wires leave the tails through a
         # slot behind the pocket, rise to the head_wire_z channel and run out on the +X side
         # (behind the cable cover), like the v0.32 magnet wires.
-        cut = pogo_pocket(p, p.z_if, -1, ay)
-        if p.pogo_head_screws:
-            cut = cut.union(pogo_screws(p, p.z_if, -1, p.pogo_head_screws, ay))
+        # it rests on its ears, on a ring round each screw hole pogo_ear_z proud of the floor (as in
+        # the hat); the body and the lip round its magnets hang clear of the floor
+        cut = pogo_pocket(p, p.z_if, -1, ay, tail_x=p.pogo_head_tail_x)
         yb = ay + pogo_yc(p) + p.pogo_w / 2 + p.pogo_clear
         zb = p.z_if - p.pogo_h - p.pogo_recess - p.pogo_tail - p.pogo_tail_room
         c0, c1 = p.head_wire_z
@@ -558,6 +561,14 @@ def front_body_hatchanger(p: P, stock: cq.Shape, g2_body: cq.Shape = None) -> cq
         cut = cut.union(box(-p.pogo_tail_x, p.pogo_tail_x, yb - 0.01, yb + ws, zb, p.z_if + c1))
         cut = cut.union(box(-p.pogo_tail_x, p.pad_x + 2, yb - 0.01, yb + ws, p.z_if + c0, p.z_if + c1))
         body = body.cut(cut, clean=False)
+        xe = p.pogo_l / 2 - p.pogo_ear_hole_inset
+        zf = p.z_if - p.pogo_h - p.pogo_recess
+        for sx in (-1, 1):
+            body = body.union(cyl_z(2 * p.pogo_cap_r, zf - 0.01, p.pogo_ear_z + 0.01, x=sx * xe,
+                                    y=ay + pogo_yc(p)), clean=False)
+        if p.pogo_head_screws:
+            body = body.cut(pogo_screws(p, p.z_if, -1, p.pogo_head_screws, ay, raise_=p.pogo_ear_z),
+                            clean=False)
     elif p.id_contacts:
         zf = p.z_if - mdepth                     # magnet pocket floor
         yc = ay + p.head_wire_y
