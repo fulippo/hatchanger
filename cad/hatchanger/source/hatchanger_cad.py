@@ -1,5 +1,5 @@
 """
-HatChanger v0.35, filament-cutter variant (FilamATrix), Galileo 2 (G2E) integration.
+HatChanger v0.36, filament-cutter variant (FilamATrix), Galileo 2 (G2E) integration.
 
 Parts
   front_body_hatchanger : the FilamATrix G2E front body (cutter insert, after-gears sensor, arm
@@ -116,6 +116,9 @@ class P:
     # hat: above the pocket floor the whole connector outline is hollow (tails, solder joints, ID
     # resistor), except a boss under each ear's screw hole. The pad half rests on its ears there.
     pogo_res_h: float = 3.0        # cavity height above the tails
+    pogo_ear_z: float = 0.8        # hat: the ear bosses (and the screw pilots) stand this far above the
+                                   #   pocket floor, so the pad half sits at its nominal depth (v0.36;
+                                   #   with the bosses at the floor it sat 0.8 mm too deep)
     pogo_boss_r: float = 1.75      # ear bosses round the screw holes: fill the ear ends (r 1.7), 1.15 wall to the pilot
     pin_d: float = 3.0             # steel dowel pins, 3x8 (ISO 8734 m6)
     pin_hole_press: float = 2.95   # press fit in the body (tune)
@@ -400,10 +403,12 @@ def pogo_outline(p: P, z0: float, z1: float, y_axis: float = 0.0) -> cq.Workplan
     return cut
 
 
-def pogo_screws(p: P, z_face: float, down: int, sides, y_axis: float = 0.0) -> cq.Workplane:
-    """Pilot holes for the ear screws, from the pocket floor pogo_screw_depth into the part."""
+def pogo_screws(p: P, z_face: float, down: int, sides, y_axis: float = 0.0,
+                raise_: float = 0.0) -> cq.Workplane:
+    """Pilot holes for the ear screws, from the pocket floor (less raise_, towards the face)
+    pogo_screw_depth into the part."""
     x = p.pogo_l / 2 - p.pogo_ear_hole_inset
-    zf = z_face + down * (p.pogo_h + p.pogo_recess)
+    zf = z_face + down * (p.pogo_h + p.pogo_recess - raise_)
     z0 = zf - 0.01 if down > 0 else zf - p.pogo_screw_depth
     w = cq.Workplane("XY")
     for s in sides:
@@ -923,7 +928,13 @@ def cartridge(p: P) -> cq.Workplane:
             cav = cav.cut(cyl_z(2 * p.pogo_boss_r, zf - 1, p.pogo_tail + p.pogo_res_h + 2,
                                 x=sx * xe, y=pogo_yc(p)))
         body = body.cut(pogo_pocket(p, 0.0, 1).union(cav))
-        body = body.cut(pogo_screws(p, 0.0, 1, (-1, 1)))
+        if p.pogo_ear_z > 0:                                  # raise the bosses towards the face,
+            bl = p.pogo_body_l / 2 + p.pogo_clear             #   outside the body's footprint only
+            for sx in (-1, 1):
+                cap = cyl_z(2 * p.pogo_boss_r, zf - p.pogo_ear_z, p.pogo_ear_z + 0.01, x=sx * xe, y=pogo_yc(p))
+                x0, x1 = sorted((sx * bl, sx * (xe + p.pogo_boss_r + 1)))
+                body = body.union(cap.intersect(box(x0, x1, -20, 20, -1, 20)))
+        body = body.cut(pogo_screws(p, 0.0, 1, (-1, 1), raise_=p.pogo_ear_z))
     for s in (-1, 1):
         body = body.cut(cyl_z(p.magnet_d + p.magnet_fit, -1, mdepth + 1, x=s * mx, y=my))
     if p.id_contacts and not p.pogo:                                          # resistor slot from the back face
