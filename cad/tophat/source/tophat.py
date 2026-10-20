@@ -99,7 +99,7 @@ def prism_x(pts_yz, x0, x1):
     return w.val()
 
 
-def slots_front(c: C, x0, x1, top_from=None, inner_from=None):
+def slots_front(c: C, x0, x1, top_from=None, inner_from=None, mitre=False):
     """Cutters for the T-slots of a front-side wall between x0 and x1 (outer face y = -h): one on
     top and one on the inner (chamber) face. The outer face is all tray."""
     h, H, W = c.h, c.H, c.W
@@ -107,8 +107,13 @@ def slots_front(c: C, x0, x1, top_from=None, inner_from=None):
     yc, zc = -h + W / 2, H - W / 2
     top = [(yc + u, H - d) for u, d in sp]
     inner = [(-h + W - d, zc + u) for u, d in sp]
-    return [prism_x(top, top_from if top_from is not None else x0 - 1, x1 + 1),
-            prism_x(inner, inner_from if inner_from is not None else x0 - 1, x1 + 1)]
+    inner_cut = prism_x(inner, inner_from if inner_from is not None else x0 - 1, x1 + 1)
+    if mitre:                                      # corner: stop on the diagonal x = y, the mirrored
+        big = 4 * c.h                              #   slot of the other arm meets it there
+        half = (cq.Workplane("XY").polyline([(-big, -big), (big, big), (big, -big)]).close()   # x >= y
+                .extrude(big).translate((0, 0, -big / 2)).val())
+        inner_cut = inner_cut.intersect(half)
+    return [prism_x(top, top_from if top_from is not None else x0 - 1, x1 + 1), inner_cut]
 
 
 def screws_front(c: C, xs):
@@ -270,7 +275,7 @@ def corner(c: C):
     fp = [(-h + k, -h), (-h + A, -h), (-h + A, -h + W), (-h + W, -h + W), (-h + W, -h + A), (-h, -h + A), (-h, -h + k)]
     s = body(c, fp)
     xs = -h + c.corner_screw
-    arm = slots_front(c, -h, -h + A, top_from=-h + W / 2 - c.slot_open / 2, inner_from=-h + W - c.slot_depth)
+    arm = slots_front(c, -h, -h + A, top_from=-h + W / 2 - c.slot_open / 2, inner_from=-h + W - c.slot_depth - 2, mitre=True)
     arm += screws_front(c, (xs,))
     arm += panel_front(c, -h + c.corner_border, -h + A, roof=True, open_ends=(False, True))
     tools = arm + [mirror_diag(t) for t in arm]
