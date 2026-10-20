@@ -18,7 +18,7 @@ Pieces (each fits a 250 bed or larger), separated by FOAM_GAP for closed-cell fo
   python3 cad/tophat/source/tophat.py --pattern voronoi  # voronoi panels (files *_voronoi)
   -> cad/tophat/stl/<size>/, cad/tophat/step/<size>/ (grommet and plug in cad/tophat/stl/, step/)
 Each piece is screwed to the frame's top slot (M3 x 10 + roll-in T-nut) through its foot: the
-screw head sits in a pocket open on the outer face, reached with the short arm of an L-key.
+screw sits in a counterbore that opens into the outer tray, reached with the short arm of an L-key.
 
 Frame: x, y = 0 on the frame centre, front outer edge y = -F/2 (-230 on a 300); z = 0 on top of the extrusions.
 """
@@ -47,12 +47,10 @@ class C:
     slot_depth: float = 6.1
     # frame screws
     screw_d: float = 3.4
-    screw_pocket_w: float = 12.0   # pocket for the head and the key, open on the outer face
-    screw_pocket_h: float = 22.0
-    screw_pocket_depth: float = 15.5   # from the outer face (screw axis at 10): 4.5 mm skin
+    counterbore_d: float = 6.5  # M3 head; the counterbore opens into the tray (L-key from outside)
     floor: float = 5.0
     corner_screw: float = 60.0  # from the outer corner, on each arm
-    centre_screw: float = 22.0  # from each end of a centre (clear of the front plaque)
+    centre_screw: float = 15.0  # from each end of a centre (clear of the front letters)
     # outer panel
     corner_border: float = 20.0 # plain column at the corners (the vertical extrusion's footprint)
     end_border: float = 5.0
@@ -64,6 +62,8 @@ class C:
                                 #   stays flat. Centres print lying on it; the corners print
                                 #   upright, the tray's roof slopes at 45°
     cell_depth: float = 2.5     # honeycomb cells in the tray floor: 3.5 mm skin behind them
+    fillet_top: float = 12.0    # tray floor -> top band: brace for the skin
+    fillet_bottom: float = 8.0  # tray floor -> foot
     pitch: float = 22.0         # hex pitch
     rib: float = 3.0
     pattern: str = "hex"        # hex | voronoi
@@ -120,14 +120,14 @@ def slots_front(c: C, x0, x1, top_from=None, inner_from=None, outer_from=None, b
     return cuts
 
 
-def screws_front(c: C, xs, roof=False):
-    """Frame screws through the foot (floor thick), heads in pockets open on the outer face."""
+def screws_front(c: C, xs):
+    """Frame screws: a hole through the foot (floor thick) and a counterbore from above that opens
+    into the tray, so the head is reached from outside with an L-key."""
     h, W = c.h, c.W
     out = []
     for x in xs:
         out.append(cq.Solid.makeCylinder(c.screw_d / 2, c.floor + 2, cq.Vector(x, -h + W / 2, -1)))
-        pk = sbox(x - c.screw_pocket_w / 2, c.floor, x + c.screw_pocket_w / 2, c.floor + c.screw_pocket_h)
-        out.append(tray_pocket(c, pk, roof, depth=c.screw_pocket_depth))
+        out.append(cq.Solid.makeCylinder(c.counterbore_d / 2, c.panel_z0 + c.fillet_bottom, cq.Vector(x, -h + W / 2, c.floor)))
     return out
 
 
@@ -192,13 +192,28 @@ def cells(c: C, x0, x1, z0, z1, keep_out=None, seed=1):
     return out
 
 
-def tray_pocket(c: C, g: Polygon, roof=False, depth=None):
-    """The tray: straight prism, or (roof) ∩ the same polygon swept inwards and down at 45°,
-    so its roof slopes down at 45° from the outer face (printable upright). g must be convex
-    in z (it is: rectangles and rounded rectangles)."""
+def tray_section(c: C):
+    """(y, z) outline of the tray: flat floor, fillets up to the top band and down to the foot."""
     h = c.h
-    y0, y1 = -h - 1, -h + (c.panel_depth if depth is None else depth)
-    straight = xz_prism(g, y0, y1)
+    yo, yf = -h - 1, -h + c.panel_depth
+    z0, z1, rt, rb = c.panel_z0, c.panel_z1, c.fillet_top, c.fillet_bottom
+    pts = [(yo, z1), (yf - rt, z1)]
+    pts += [(yf - rt + rt * math.sin(a), z1 - rt + rt * math.cos(a))
+            for a in np.linspace(0, math.pi / 2, 13)[1:]]
+    pts += [(yf - rb + rb * math.cos(a), z0 + rb - rb * math.sin(a))
+            for a in np.linspace(0, math.pi / 2, 9)[:-1]]
+    pts += [(yf - rb, z0), (yo, z0)]
+    return pts
+
+
+def tray_pocket(c: C, g: Polygon, roof=False):
+    """The tray: the polygon (x, z) cut to the filleted section, or (roof) also ∩ the polygon
+    swept inwards and down at 45°, so its roof slopes down at 45° from the outer face
+    (printable upright). g must be convex in z (it is: rectangles, rounded rectangles)."""
+    h = c.h
+    y0, y1 = -h - 1, -h + c.panel_depth
+    b = g.bounds
+    straight = xz_prism(g, y0, y1).intersect(prism_x(tray_section(c), b[0] - 1, b[2] + 1))
     if not roof:
         return straight
     lift = 1                                       # the roof starts sloping at the outer face
@@ -220,7 +235,8 @@ def panel_front(c: C, x0, x1, keep_out=None, seed=1, roof=False, solid=None):
     for g in getattr(tray, "geoms", [tray]):
         if g.geom_type == "Polygon" and g.area > 20:
             tools.append(tray_pocket(c, g, roof))
-    for g in cells(c, x0, x1, z0, z1, keep_out, seed):
+    # honeycomb on the flat floor only (the fillets stay whole)
+    for g in cells(c, x0, x1, z0 + c.fillet_bottom - c.rib, z1 - c.fillet_top + c.rib, keep_out, seed):
         tools.append(xz_prism(g, -h - 1, -h + c.panel_depth + c.cell_depth))
     return tools
 
@@ -250,7 +266,7 @@ def corner(c: C):
     xs = -h + c.corner_screw
     arm = slots_front(c, -h, -h + A, top_from=-h + W / 2 - c.slot_cav / 2, inner_from=-h + W - c.slot_depth,
                       outer_from=-h - 1)
-    arm += screws_front(c, (xs,), roof=True)
+    arm += screws_front(c, (xs,))
     arm += panel_front(c, -h + c.corner_border, -h + A - c.end_border, roof=True)
     tools = arm + [mirror_diag(t) for t in arm]
     return cut_all(s, tools)
