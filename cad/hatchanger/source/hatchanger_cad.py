@@ -1,5 +1,5 @@
 """
-HatChanger v0.37, filament-cutter variant (FilamATrix), Galileo 2 (G2E) integration.
+HatChanger v0.38, filament-cutter variant (FilamATrix), Galileo 2 (G2E) integration.
 
 Parts
   front_body_hatchanger : the FilamATrix G2E front body (cutter insert, after-gears sensor, arm
@@ -119,6 +119,9 @@ class P:
     pogo_ear_z: float = 0.8        # hat: the ear bosses (and the screw pilots) stand this far above the
                                    #   pocket floor, so the pad half sits at its nominal depth (v0.36;
                                    #   with the bosses at the floor it sat 0.8 mm too deep)
+    pogo_cap_r: float = 1.2        # radius of the raised part of each boss (0.6 wall to the pilot): a
+                                   #   plastic lip round the connector's magnets, under the body next to
+                                   #   each ear, sits on anything wider (v0.38; v0.37 raised the full 1.75)
     pogo_boss_r: float = 1.75      # ear bosses round the screw holes: fill the ear ends (r 1.7), 1.15 wall to the pilot
     pin_d: float = 3.0             # steel dowel pins, 3x8 (ISO 8734 m6)
     pin_hole_press: float = 2.95   # press fit in the body (tune)
@@ -930,7 +933,7 @@ def cartridge(p: P) -> cq.Workplane:
         body = body.cut(pogo_pocket(p, 0.0, 1).union(cav))
         if p.pogo_ear_z > 0:                                  # raise the whole bosses towards the face
             for sx in (-1, 1):
-                body = body.union(cyl_z(2 * p.pogo_boss_r, zf - p.pogo_ear_z, p.pogo_ear_z + 0.01,
+                body = body.union(cyl_z(2 * p.pogo_cap_r, zf - p.pogo_ear_z, p.pogo_ear_z + 0.01,
                                         x=sx * xe, y=pogo_yc(p)))
         body = body.cut(pogo_screws(p, 0.0, 1, (-1, 1), raise_=p.pogo_ear_z))
     for s in (-1, 1):
