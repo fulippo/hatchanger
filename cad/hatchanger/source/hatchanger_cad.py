@@ -92,6 +92,13 @@ class P:
     pogo_recess: float = 0.1       # connector face this far below the interface face in BOTH halves:
                                    #   a connector standing proud would rock the hat; the pins stick out
                                    #   1.0 and are pushed flush, so 0.2 total keeps 0.8 of spring travel
+    # ear screws: Ø1.6 holes in the ears, 1.5 mm in from each ear tip. The ears are taken to be flush
+    # with the back of the body, so they rest on the pocket floor and the pilot starts there.
+    pogo_ear_hole_inset: float = 1.5   # hole centre from the ear's outer end
+    pogo_screw_pilot: float = 1.2      # self-tapping M1.4 (PA/PB 1.4) into the print
+    pogo_screw_depth: float = 4.0      # pilot depth below the pocket floor -> M1.4 x 5
+    pogo_head_screws: tuple = (-1,)    # head: -X only. Under the +X hole the rear body's M3x50 tip
+                                       #   (and its insert) leaves ~1.5 mm of plastic. Hat: both sides
     pogo_cone_wall: float = 0.9    # wall between the head pocket and the cone socket mouth
     pogo_tail_x: float = 3.0       # tail / solder-joint room under the connector: +-x, full width,
     pogo_tail_room: float = 0.8    #   pogo_tail + this deep
@@ -367,6 +374,18 @@ def pogo_pocket(p: P, z_face: float, down: int, y_axis: float = 0.0) -> cq.Workp
     return cut.union(box(-p.pogo_tail_x, p.pogo_tail_x, yc - hw, yc + hw, a, b))
 
 
+def pogo_screws(p: P, z_face: float, down: int, sides, y_axis: float = 0.0) -> cq.Workplane:
+    """Pilot holes for the ear screws, from the pocket floor pogo_screw_depth into the part."""
+    x = p.pogo_l / 2 - p.pogo_ear_hole_inset
+    zf = z_face + down * (p.pogo_h + p.pogo_recess)
+    z0 = zf - 0.01 if down > 0 else zf - p.pogo_screw_depth
+    w = cq.Workplane("XY")
+    for s in sides:
+        w = w.add(cyl_z(p.pogo_screw_pilot, z0, p.pogo_screw_depth + 0.01, x=s * x,
+                        y=y_axis + pogo_yc(p)).val())
+    return w.combine()
+
+
 def load_g2_part(step_path, suffix):
     """Return (shape, all_parts) for the first G2E STEP part whose name ends with suffix."""
     from OCP.STEPCAFControl import STEPCAFControl_Reader
@@ -497,6 +516,8 @@ def front_body_hatchanger(p: P, stock: cq.Shape, g2_body: cq.Shape = None) -> cq
         # slot behind the pocket, rise to the head_wire_z channel and run out on the +X side
         # (behind the cable cover), like the v0.32 magnet wires.
         cut = pogo_pocket(p, p.z_if, -1, ay)
+        if p.pogo_head_screws:
+            cut = cut.union(pogo_screws(p, p.z_if, -1, p.pogo_head_screws, ay))
         yb = ay + pogo_yc(p) + p.pogo_w / 2 + p.pogo_clear
         zb = p.z_if - p.pogo_h - p.pogo_recess - p.pogo_tail - p.pogo_tail_room
         c0, c1 = p.head_wire_z
@@ -870,7 +891,7 @@ def cartridge(p: P) -> cq.Workplane:
     if p.pogo:
         # pad half, pads down, face pogo_recess above the hat face; the resistor sits in a cavity
         # above the tails, soldered across them
-        body = body.cut(pogo_pocket(p, 0.0, 1))
+        body = body.cut(pogo_pocket(p, 0.0, 1).union(pogo_screws(p, 0.0, 1, (-1, 1))))
         z0 = p.pogo_h + p.pogo_recess + p.pogo_tail
         yc, hw = pogo_yc(p), p.pogo_res_w / 2
         body = body.cut(box(-p.pogo_res_x, p.pogo_res_x, yc - hw, yc + hw, z0, z0 + p.pogo_res_h))

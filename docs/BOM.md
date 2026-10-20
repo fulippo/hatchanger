@@ -10,6 +10,7 @@ The only HatChanger part on the toolhead is `front_body_hatchanger`, built on th
 | 1 | `front_body_hatchanger` | Printed ABS/ASA. Replaces the G2E `front_body` (and FilamATrix's `front_body_g2e`). The +X wall in front of the toolhead board is 1 mm thinner than stock, so an SB2209 doesn't touch it |
 | 2 | Dowel pin 3×8 mm | ISO 8734 / DIN 6325, hardened, m6. Press in after drilling the holes to 3.0 mm |
 | 1 | 2-pin magnetic pogo connector, 2.54 mm pitch, pin half | Body 15.4 × 4.05 × 4.13 mm, 18.32 mm over the mounting ears (keep them), 1.4 mm tails, pins 1.0 mm proud. Holds the hat down with its built-in magnets and carries the hat ID. Another connector works if you set the `pogo_*` sizes in `hatchanger_cad.py` and rebuild |
+| 1 | M1.4×5 self-tapping screw | −X ear of the pin half. The +X ear isn't screwed: the rear body's M3 screw ends right under it |
 | 1 | Omron D2F switch, pin plunger | After-gears filament sensor (D2F or D2F-5, no lever), FilamATrix's +X pocket. Genuine Omron from DigiKey/Mouser or a clone |
 | 1 | Steel ball 5.5 mm | Sensor ball; 304 stainless is fine |
 | 2 | M2×10 self-tapping screw | Hold the D2F (as in FilamATrix) |
@@ -25,6 +26,7 @@ The only HatChanger part on the toolhead is `front_body_hatchanger`, built on th
 | 1 | 5 | ECAS04 bowden coupler | Genuine Bondtech Push-fit ECAS 4 mm; generic clones also work |
 | 2 | 10 | Magnet Ø6×3 mm, axial, N42SH | Front face (rack snap). High-temp grade (150 °C) for chamber heat; standard N grades are rated to 80 °C |
 | 1 | 5 | 2-pin magnetic pogo connector, 2.54 mm pitch, pad half | Mates with the head's pin half: holds the hat down and carries the hat ID |
+| 2 | 10 | M1.4×5 self-tapping screw | Both ears of the pad half |
 | (1) | (5) | Resistor, one value per lane | Hat ID (optional, `hatchanger_id.cfg`): soldered across the pad half's tails. 1/4 W axial or 1206 SMD |
 | ~1 m | ~5 m | PTFE 4×2 mm bowden | One continuous tube from spool/buffer, through the hat, ending 20.5 mm below it as the stinger. Length depends on spool location |
 
@@ -73,7 +75,7 @@ About **85 g of ABS/ASA** (without spacers) in total (model volume × 1.05 g/cm�
 ## Assembly notes
 
 - **Magnets:** glue every magnet with epoxy around the sides and press it **flush** with its face against a flat plate (glass) until the glue sets.
-- **Pogo connector:** it sits 0.1 mm below the face in both halves, so it never holds the hat off the pad; the pins stay pressed 0.8 mm. Both halves rest on the pocket floor, so no plate is needed: drop each half in, check that its face is just below the surface (a straight edge across the pocket must not touch it), and epoxy it around the sides.
+- **Pogo connector:** it sits 0.1 mm below the face in both halves, so it never holds the hat off the pad; the pins stay pressed 0.8 mm. Both halves rest on the pocket floor on their ears (the model assumes the ears are flush with the back of the body), so no plate is needed: drop each half in, check that its face is just below the surface (a straight edge across the pocket must not touch it), and screw it through the ears (Ø1.2 pilots, 4 mm deep): one screw on −X in the head, two in the hat. Add a little epoxy around the sides of the head half.
   1. **Orientation first.** Its magnets make the connector polarised: mated one way round it snaps together, the other way it pushes apart. Snap the two halves together, mark the +X end of both, and keep every pad half the same way round in every hat.
   2. **Head:** solder two thin wires (~30 AWG) to the pin half's tails, lay them in the slot behind the pocket and out of the channel on the +X side (behind the cable cover), then glue the pin half in, pins up.
   3. **Hat:** solder the hat's resistor across the pad half's tails (an axial one lies along X in the cavity above them, leads bent down), push it in resistor first, pads down, and glue it.
