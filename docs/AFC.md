@@ -135,6 +135,7 @@ The test covers:
 - AFC tool changes both ways;
 - a repeated `T` that does nothing;
 - `HAT_DOCK`, `HAT_START` and `HAT_SET_STATE` by hand, with AFC following;
+- `HAT_DOCK` finishing a dock that stopped with the hat set down in its rack;
 - a failed grab reported by AFC.
 
 The setup steps are at the top of the script.
