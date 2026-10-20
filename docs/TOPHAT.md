@@ -18,8 +18,10 @@ the rear wall.
 - **Hollowed from the outside.** Below the top band the outer face is a deep tray with the
   honeycomb on its floor, on a 3.5 mm skin; the inner face (chamber side) is flat. Fillets
   (12 mm at the top, 8 mm at the bottom) brace the skin against the top band and the foot. Full 20 mm
-  only where it matters: the top band, the 7 mm foot, the corner columns, the piece ends and
-  the bosses round the bowden exits. The front letters stand on the tray floor.
+  only where it matters: the top band, the 7 mm foot, the corner columns and the bosses round
+  the bowden exits. The trays and the pattern run on through the joints, so the wall reads as
+  one part: the pattern is the same for every piece of a side, centred and mirror-symmetric.
+  The front letters stand 4 mm off the tray floor.
 - **Foam gaps.** The pieces are 2.5 mm apart: fill each joint with a 3 mm closed-cell foam strip.
   Foam tape also goes under the wall (on the extrusion) and under the panel.
 - **Screwed to the frame.** Two M3 × 10 screws per piece, through the 5 mm foot into roll-in

@@ -53,7 +53,6 @@ class C:
     centre_screw: float = 15.0  # from each end of a centre (clear of the front letters)
     # outer panel
     corner_border: float = 20.0 # plain column at the corners (the vertical extrusion's footprint)
-    end_border: float = 5.0
     panel_z0: float = 7.0
     panel_gap_top: float = 4.0  # below the top band
     panel_r: float = 3.0
@@ -71,7 +70,7 @@ class C:
     text: str = "HatChanger"
     font: str = "/usr/share/fonts/opentype/inter/Inter-ExtraBold.otf"
     text_h: float = 22.0
-    plaque_depth: float = 2.0   # letters rise from here back to the face
+    text_relief: float = 4.0    # letters stand this far off the tray floor
     # rear bowden exits
     hole_d: float = 12.0
     hole_cols: tuple = (-36.0, -12.0, 12.0, 36.0)
@@ -146,10 +145,14 @@ def rrect(x0, x1, z0, z1, r):
     return sbox(x0 + r, z0 + r, x1 - r, z1 - r).buffer(r, resolution=8)
 
 
-def cells(c: C, x0, x1, z0, z1, keep_out=None, seed=1):
-    """Pocket polygons for a panel (x0..x1, z0..z1) on the outer face."""
-    inner = sbox(x0 + c.rib, z0 + c.rib, x1 - c.rib, z1 - c.rib)
-    xm, zm = (x0 + x1) / 2, (z0 + z1) / 2
+def cells(c: C, x0, x1, z0, z1, keep_out=None, seed=1, open_ends=(False, False)):
+    """Pocket polygons for a panel (x0..x1, z0..z1) on the outer face. The pattern is the same
+    for every piece of a side: centred on the side (x = 0) and mirror-symmetric, so it runs on
+    across the joints (open_ends: the panel runs out through that end of the piece) and all the
+    corners are the same part."""
+    inner = sbox(x0 - 1 if open_ends[0] else x0 + c.rib, z0 + c.rib,
+                 x1 + 1 if open_ends[1] else x1 - c.rib, z1 - c.rib)
+    xm, zm = 0.0, (z0 + z1) / 2
     p = c.pitch
     rp = p * math.sqrt(3) / 2
     if c.pattern == "hex":
@@ -166,9 +169,13 @@ def cells(c: C, x0, x1, z0, z1, keep_out=None, seed=1):
         rng = np.random.default_rng(seed)
         pts = []
         for j in range(-6, 7):
-            for k in range(-24, 25):
-                cx = xm + k * p + (p / 2 if j % 2 else 0); cz = zm + j * rp
-                pts.append((cx + rng.uniform(-0.28, 0.28) * p, cz + rng.uniform(-0.28, 0.28) * rp))
+            for k in range(0, 25):                 # one half, mirrored: symmetric about x = 0
+                cx = k * p + (p / 2 if j % 2 else 0); cz = zm + j * rp
+                dx, dz = rng.uniform(-0.28, 0.28) * p, rng.uniform(-0.28, 0.28) * rp
+                if cx == 0:
+                    pts.append((0.0, cz + dz))
+                else:
+                    pts += [(cx + dx, cz + dz), (-(cx + dx), cz + dz)]
         pts = np.array(pts)
         vor = Voronoi(pts)
         polys = []
@@ -186,9 +193,13 @@ def cells(c: C, x0, x1, z0, z1, keep_out=None, seed=1):
             q = q.difference(keep_out)
         for g in getattr(q, "geoms", [q]):
             if not g.is_empty and g.geom_type == "Polygon" and g.area > 10:
-                g = g.buffer(-0.6).buffer(0.6, resolution=4)       # no knife edges where a cell is clipped
-                if not g.is_empty and g.geom_type == "Polygon" and g.area > 10 and not g.buffer(-3.0).is_empty:
-                    out.append(g)                                    # (no slivers narrower than 6 mm)
+                b = g.bounds                        # a cell cut by a joint: keep it whatever its width
+                at_end = (open_ends[0] and b[0] < x0 + 0.01) or (open_ends[1] and b[2] > x1 - 0.01)
+                if not at_end:
+                    g = g.buffer(-0.6).buffer(0.6, resolution=4)   # no knife edges where a cell is clipped
+                if not g.is_empty and g.geom_type == "Polygon" and g.area > 2 and \
+                        (at_end or not g.buffer(-3.0).is_empty):  # (no slivers narrower than 6 mm)
+                    out.append(g)
     return out
 
 
@@ -224,11 +235,14 @@ def tray_pocket(c: C, g: Polygon, roof=False):
     return straight.intersect(oblique)
 
 
-def panel_front(c: C, x0, x1, keep_out=None, seed=1, roof=False, solid=None):
-    """Cutters for a patterned panel on the outer face of a front-side wall between x0 and x1."""
+def panel_front(c: C, x0, x1, keep_out=None, seed=1, roof=False, solid=None, open_ends=(True, True)):
+    """Cutters for a patterned panel on the outer face of a front-side wall between x0 and x1.
+    open_ends: the tray runs out through that end (a joint) instead of stopping at a border."""
     h = c.h
     z0, z1 = c.panel_z0, c.panel_z1
-    tray = rrect(x0, x1, z0, z1, c.panel_r)        # keep_out clears the cells, solid the tray
+    ext = 3 * c.panel_r
+    tray = rrect(x0 - (ext if open_ends[0] else 0), x1 + (ext if open_ends[1] else 0), z0, z1, c.panel_r)
+    tray = tray.intersection(sbox(x0 - 1, z0 - 1, x1 + 1, z1 + 1))   # keep_out clears the cells, solid the tray
     if solid is not None:
         tray = tray.difference(solid)
     tools = []
@@ -236,7 +250,7 @@ def panel_front(c: C, x0, x1, keep_out=None, seed=1, roof=False, solid=None):
         if g.geom_type == "Polygon" and g.area > 20:
             tools.append(tray_pocket(c, g, roof))
     # honeycomb on the flat floor only (the fillets stay whole)
-    for g in cells(c, x0, x1, z0 + c.fillet_bottom - c.rib, z1 - c.fillet_top + c.rib, keep_out, seed):
+    for g in cells(c, x0, x1, z0 + c.fillet_bottom - c.rib, z1 - c.fillet_top + c.rib, keep_out, seed, open_ends):
         tools.append(xz_prism(g, -h - 1, -h + c.panel_depth + c.cell_depth))
     return tools
 
@@ -267,7 +281,7 @@ def corner(c: C):
     arm = slots_front(c, -h, -h + A, top_from=-h + W / 2 - c.slot_cav / 2, inner_from=-h + W - c.slot_depth,
                       outer_from=-h - 1)
     arm += screws_front(c, (xs,))
-    arm += panel_front(c, -h + c.corner_border, -h + A - c.end_border, roof=True)
+    arm += panel_front(c, -h + c.corner_border, -h + A, roof=True, open_ends=(False, True))
     tools = arm + [mirror_diag(t) for t in arm]
     return cut_all(s, tools)
 
@@ -279,11 +293,11 @@ def centre(c: C, kind="plain"):
     xs = (-L / 2 + c.centre_screw, L / 2 - c.centre_screw)
     tools = slots_front(c, -L / 2, L / 2) + screws_front(c, xs)
     keep, extra, add = None, [], []
-    x0, x1 = -L / 2 + c.end_border, L / 2 - c.end_border
+    x0, x1 = -L / 2, L / 2
     post = []                                      # cut after the bosses are added
     if kind == "front":
-        # letters standing on the tray floor, up to the outer face
-        yt, dt = -h + c.panel_depth + 0.3, c.panel_depth + 0.3
+        # letters standing on the tray floor
+        yt, dt = -h + c.panel_depth + 0.3, c.text_relief + 0.3
         txt = (cq.Workplane("XZ", origin=(0, yt, 0))
                .text(c.text, c.text_h, dt, fontPath=c.font, halign="center", valign="center"))
         tb = txt.val().BoundingBox()
