@@ -55,7 +55,7 @@ The only HatChanger part on the toolhead is `front_body_hatchanger`, built on th
 | 1 | `stinger_gauge` | Flat face on the bed, as exported. Assembly jig, one is enough | ~3 |
 | (1) | `ptfe_rail_clamp` | As exported: foot on the bed, bores vertical, no supports | ~19 |
 | (1) | `ptfe_rail_clamp_4x` | 4-tube version, same orientation | ~12 |
-| (1 set) | `tophat_*` | Optional heated-chamber top hat: parts, hardware and orientation in [TOPHAT.md](TOPHAT.md) | ~900 |
+| (1 set) | `tophat_*` | Optional heated-chamber top hat: parts, hardware and orientation in [TOPHAT.md](TOPHAT.md) | ~1000 |
 
 About **85 g of ABS/ASA** (without spacers) in total (model volume × 1.05 g/cm³ × 0.7 fill factor; use your slicer's figure). Voron print settings: 0.4 nozzle, 0.2 layers, 4 walls, 5 top/bottom, 40 % infill.
 

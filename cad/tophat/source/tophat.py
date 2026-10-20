@@ -1,10 +1,10 @@
 """
 HatChanger top hat: a raised canopy wall for a heated chamber (Voron 2.4 250 / 300 / 350).
 
-The wall stands on the top extrusions with the same 20 mm footprint, so its top is a printed
-"2020": top face 20 mm wide with a T-slot on top, one on the outer face and one on the inner face
-(roll-in / spring T-nuts: panel clips, LED bars, tube guides... clamp on it as on the frame). The
-stock top panel sits on it.
+The wall stands on the top extrusions with the same 20 mm footprint: a 20 mm top face with a
+T-slot on top and one on the inner face, as on a 2020 (roll-in / spring T-nuts: panel clips, LED
+bars, tube guides... clamp on it as on the frame). The stock top panel sits on it. The outer face
+is a tray with the pattern, up to a 7 mm lip under the top.
 
 Pieces (each fits a 250 bed or larger), separated by FOAM_GAP for closed-cell foam strips:
   tophat_<size>_corner        x4  L, ARM x ARM
@@ -17,8 +17,8 @@ Pieces (each fits a 250 bed or larger), separated by FOAM_GAP for closed-cell fo
   python3 cad/tophat/source/tophat.py --size 300         # one size
   python3 cad/tophat/source/tophat.py --pattern voronoi  # voronoi panels (files *_voronoi)
   -> cad/tophat/stl/<size>/, cad/tophat/step/<size>/ (grommet and plug in cad/tophat/stl/, step/)
-Each piece is screwed to the frame's top slot (M3 x 10 + roll-in T-nut): the screw drops down a
-shaft from the printed top slot, a long 2.5 mm hex key reaches it through the slot.
+Each piece is screwed to the frame's top slot (M3 x 10 + roll-in T-nut) through its foot: the
+screw sits in a counterbore that opens into the outer tray, reached with the short arm of an L-key.
 
 Frame: x, y = 0 on the frame centre, front outer edge y = -F/2 (-230 on a 300); z = 0 on top of the extrusions.
 """
@@ -46,19 +46,23 @@ class C:
     slot_cav: float = 11.0
     slot_depth: float = 6.1
     # frame screws
-    shaft_d: float = 7.0        # M3 head 5.5 drops through the 6.2 slot opening
     screw_d: float = 3.4
+    counterbore_d: float = 6.5  # M3 head; the counterbore opens into the tray (L-key from outside)
     floor: float = 5.0
     corner_screw: float = 60.0  # from the outer corner, on each arm
-    centre_screw: float = 35.0  # from each end of a centre
+    centre_screw: float = 15.0  # from each end of a centre (clear of the front letters)
     # outer panel
     corner_border: float = 20.0 # plain column at the corners (the vertical extrusion's footprint)
-    end_border: float = 5.0
     panel_z0: float = 7.0
-    panel_gap_top: float = 4.0  # below the top band
+    top_lip: float = 7.0        # plain band above the tray (holds the top slot)
     panel_r: float = 3.0
-    panel_depth: float = 1.0    # panel recess (rib tops)
-    cell_depth: float = 2.5     # cells, below the panel floor
+    panel_depth: float = 14.0   # the panel is a tray in the outer face (rib tops): the wall is
+                                #   hollowed from the outside like the canopy, the inner side
+                                #   stays flat. Centres print lying on it; the corners print
+                                #   upright, the tray's roof slopes at 45°
+    cell_depth: float = 2.5     # honeycomb cells in the tray floor: 3.5 mm skin behind them
+    fillet_top: float = 12.0    # tray floor -> top band: brace for the skin
+    fillet_bottom: float = 8.0  # tray floor -> foot
     pitch: float = 22.0         # hex pitch
     rib: float = 3.0
     pattern: str = "hex"        # hex | voronoi
@@ -66,7 +70,7 @@ class C:
     text: str = "HatChanger"
     font: str = "/usr/share/fonts/opentype/inter/Inter-ExtraBold.otf"
     text_h: float = 22.0
-    plaque_depth: float = 2.0   # letters rise from here back to the face
+    text_relief: float = 4.0    # letters stand this far off the tray floor
     # rear bowden exits
     hole_d: float = 12.0
     hole_cols: tuple = (-36.0, -12.0, 12.0, 36.0)
@@ -79,7 +83,7 @@ class C:
     @property
     def LC(self): return self.F - 2 * self.ARM - 2 * self.FOAM_GAP
     @property
-    def panel_z1(self): return self.H - self.W - self.panel_gap_top
+    def panel_z1(self): return self.H - self.top_lip
 
 
 def slot_poly(c: C):
@@ -95,32 +99,32 @@ def prism_x(pts_yz, x0, x1):
     return w.val()
 
 
-def slots_front(c: C, x0, x1, top_from=None, inner_from=None, outer_from=None, breaks=()):
-    """Cutters for the three slots of a front-side wall between x0 and x1 (outer face y = -h)."""
+def slots_front(c: C, x0, x1, top_from=None, inner_from=None, mitre=False):
+    """Cutters for the T-slots of a front-side wall between x0 and x1 (outer face y = -h): one on
+    top and one on the inner (chamber) face. The outer face is all tray."""
     h, H, W = c.h, c.H, c.W
     sp = slot_poly(c)
     yc, zc = -h + W / 2, H - W / 2
     top = [(yc + u, H - d) for u, d in sp]
-    outer = [(-h + d, zc + u) for u, d in sp]
     inner = [(-h + W - d, zc + u) for u, d in sp]
-    cuts = [prism_x(top, top_from if top_from is not None else x0 - 1, x1 + 1)]
-    def segs(a, b):
-        out, s = [], a
-        for x in sorted(breaks):
-            out.append((s, x - 6)); s = x + 6
-        out.append((s, b)); return [(p, q) for p, q in out if q > p]
-    for poly, start in ((outer, outer_from), (inner, inner_from)):
-        for p, q in segs(start if start is not None else x0 - 1, x1 + 1):
-            cuts.append(prism_x(poly, p, q))
-    return cuts
+    top_cut = prism_x(top, top_from if top_from is not None else x0 - 1, x1 + 1)
+    inner_cut = prism_x(inner, inner_from if inner_from is not None else x0 - 1, x1 + 1)
+    if mitre:                                      # corner: stop on the diagonal x = y, the mirrored
+        big = 4 * c.h                              #   slots of the other arm meet them there
+        half = (cq.Workplane("XY").polyline([(-big, -big), (big, big), (big, -big)]).close()   # x >= y
+                .extrude(big).translate((0, 0, -big / 2)).val())
+        top_cut, inner_cut = top_cut.intersect(half), inner_cut.intersect(half)
+    return [top_cut, inner_cut]
 
 
-def shafts_front(c: C, xs):
+def screws_front(c: C, xs):
+    """Frame screws: a hole through the foot (floor thick) and a counterbore from above that opens
+    into the tray, so the head is reached from outside with an L-key."""
     h, W = c.h, c.W
     out = []
     for x in xs:
-        out.append(cq.Solid.makeCylinder(c.shaft_d / 2, c.H, cq.Vector(x, -h + W / 2, c.floor)))
         out.append(cq.Solid.makeCylinder(c.screw_d / 2, c.floor + 2, cq.Vector(x, -h + W / 2, -1)))
+        out.append(cq.Solid.makeCylinder(c.counterbore_d / 2, c.panel_z0 + c.fillet_bottom, cq.Vector(x, -h + W / 2, c.floor)))
     return out
 
 
@@ -139,10 +143,14 @@ def rrect(x0, x1, z0, z1, r):
     return sbox(x0 + r, z0 + r, x1 - r, z1 - r).buffer(r, resolution=8)
 
 
-def cells(c: C, x0, x1, z0, z1, keep_out=None, seed=1):
-    """Pocket polygons for a panel (x0..x1, z0..z1) on the outer face."""
-    inner = sbox(x0 + c.rib, z0 + c.rib, x1 - c.rib, z1 - c.rib)
-    xm, zm = (x0 + x1) / 2, (z0 + z1) / 2
+def cells(c: C, x0, x1, z0, z1, keep_out=None, seed=1, open_ends=(False, False)):
+    """Pocket polygons for a panel (x0..x1, z0..z1) on the outer face. The pattern is the same
+    for every piece of a side: centred on the side (x = 0) and mirror-symmetric, so it runs on
+    across the joints (open_ends: the panel runs out through that end of the piece) and all the
+    corners are the same part."""
+    inner = sbox(x0 - 1 if open_ends[0] else x0 + c.rib, z0 + c.rib,
+                 x1 + 1 if open_ends[1] else x1 - c.rib, z1 - c.rib)
+    xm, zm = 0.0, (z0 + z1) / 2
     p = c.pitch
     rp = p * math.sqrt(3) / 2
     if c.pattern == "hex":
@@ -159,9 +167,13 @@ def cells(c: C, x0, x1, z0, z1, keep_out=None, seed=1):
         rng = np.random.default_rng(seed)
         pts = []
         for j in range(-6, 7):
-            for k in range(-24, 25):
-                cx = xm + k * p + (p / 2 if j % 2 else 0); cz = zm + j * rp
-                pts.append((cx + rng.uniform(-0.28, 0.28) * p, cz + rng.uniform(-0.28, 0.28) * rp))
+            for k in range(0, 25):                 # one half, mirrored: symmetric about x = 0
+                cx = k * p + (p / 2 if j % 2 else 0); cz = zm + j * rp
+                dx, dz = rng.uniform(-0.28, 0.28) * p, rng.uniform(-0.28, 0.28) * rp
+                if cx == 0:
+                    pts.append((0.0, cz + dz))
+                else:
+                    pts += [(cx + dx, cz + dz), (-(cx + dx), cz + dz)]
         pts = np.array(pts)
         vor = Voronoi(pts)
         polys = []
@@ -179,18 +191,64 @@ def cells(c: C, x0, x1, z0, z1, keep_out=None, seed=1):
             q = q.difference(keep_out)
         for g in getattr(q, "geoms", [q]):
             if not g.is_empty and g.geom_type == "Polygon" and g.area > 10:
-                g = g.buffer(-0.6).buffer(0.6, resolution=4)       # no knife edges where a cell is clipped
-                if not g.is_empty and g.geom_type == "Polygon" and g.area > 10 and not g.buffer(-3.0).is_empty:
-                    out.append(g)                                    # (no slivers narrower than 6 mm)
+                b = g.bounds                        # a cell cut by a joint: keep it whatever its width
+                at_end = (open_ends[0] and b[0] < x0 + 0.01) or (open_ends[1] and b[2] > x1 - 0.01)
+                if not at_end:
+                    g = g.buffer(-0.6).buffer(0.6, resolution=4)   # no knife edges where a cell is clipped
+                if not g.is_empty and g.geom_type == "Polygon" and g.area > 2 and \
+                        (at_end or not g.buffer(-3.0).is_empty):  # (no slivers narrower than 6 mm)
+                    out.append(g)
     return out
 
 
-def panel_front(c: C, x0, x1, keep_out=None, seed=1):
-    """Cutters for a patterned panel on the outer face of a front-side wall between x0 and x1."""
+def tray_section(c: C):
+    """(y, z) outline of the tray: flat floor, fillets up to the top band and down to the foot."""
+    h = c.h
+    yo, yf = -h - 1, -h + c.panel_depth
+    z0, z1, rt, rb = c.panel_z0, c.panel_z1, c.fillet_top, c.fillet_bottom
+    pts = [(yo, z1), (yf - rt, z1)]
+    pts += [(yf - rt + rt * math.sin(a), z1 - rt + rt * math.cos(a))
+            for a in np.linspace(0, math.pi / 2, 13)[1:]]
+    pts += [(yf - rb + rb * math.cos(a), z0 + rb - rb * math.sin(a))
+            for a in np.linspace(0, math.pi / 2, 9)[:-1]]
+    pts += [(yf - rb, z0), (yo, z0)]
+    return pts
+
+
+def tray_pocket(c: C, g: Polygon, roof=False):
+    """The tray: the polygon (x, z) cut to the filleted section, or (roof) also ∩ the polygon
+    swept inwards and down at 45°, so its roof slopes down at 45° from the outer face
+    (printable upright). g must be convex in z (it is: rectangles, rounded rectangles)."""
+    h = c.h
+    y0, y1 = -h - 1, -h + c.panel_depth
+    b = g.bounds
+    straight = xz_prism(g, y0, y1).intersect(prism_x(tray_section(c), b[0] - 1, b[2] + 1))
+    if not roof:
+        return straight
+    lift = 1                                       # the roof starts sloping at the outer face
+    pts = [cq.Vector(x, y0, z + lift) for x, z in list(g.exterior.coords)[:-1]]
+    face = cq.Face.makeFromWires(cq.Wire.makePolygon(pts, close=True))
+    L = y1 - y0
+    oblique = cq.Solid.extrudeLinear(face, cq.Vector(0, L, -L))
+    return straight.intersect(oblique)
+
+
+def panel_front(c: C, x0, x1, keep_out=None, seed=1, roof=False, solid=None, open_ends=(True, True)):
+    """Cutters for a patterned panel on the outer face of a front-side wall between x0 and x1.
+    open_ends: the tray runs out through that end (a joint) instead of stopping at a border."""
     h = c.h
     z0, z1 = c.panel_z0, c.panel_z1
-    tools = [xz_prism(rrect(x0, x1, z0, z1, c.panel_r), -h - 1, -h + c.panel_depth)]
-    for g in cells(c, x0, x1, z0, z1, keep_out, seed):
+    ext = 3 * c.panel_r
+    tray = rrect(x0 - (ext if open_ends[0] else 0), x1 + (ext if open_ends[1] else 0), z0, z1, c.panel_r)
+    tray = tray.intersection(sbox(x0 - 1, z0 - 1, x1 + 1, z1 + 1))   # keep_out clears the cells, solid the tray
+    if solid is not None:
+        tray = tray.difference(solid)
+    tools = []
+    for g in getattr(tray, "geoms", [tray]):
+        if g.geom_type == "Polygon" and g.area > 20:
+            tools.append(tray_pocket(c, g, roof))
+    # honeycomb on the flat floor only (the fillets stay whole)
+    for g in cells(c, x0, x1, z0 + c.fillet_bottom - c.rib, z1 - c.fillet_top + c.rib, keep_out, seed, open_ends):
         tools.append(xz_prism(g, -h - 1, -h + c.panel_depth + c.cell_depth))
     return tools
 
@@ -200,10 +258,15 @@ def mirror_diag(s):
     return s.mirror(cq.Vector(1, -1, 0), cq.Vector(0, 0, 0))
 
 
-def body(c: C, footprint):
+def body(c: C, footprint, ends):
+    """Extruded footprint, top edges chamfered except at the piece ends (the joints): there the
+    two neighbours meet flush, without a V across the top. ends = [(axis, value), ...]."""
     s = cq.Workplane("XY").polyline(footprint).close().extrude(c.H)
-    s = s.edges(">Z").chamfer(c.top_chamfer)
-    return s.val()
+    def at_end(e):
+        m = e.Center()
+        return any(abs((m.x if ax == "x" else m.y) - v) < 1e-3 for ax, v in ends)
+    top = [e for e in s.edges(">Z").vals() if not at_end(e)]
+    return s.newObject(top).chamfer(c.top_chamfer).val()
 
 
 def cut_all(s, tools):
@@ -216,12 +279,11 @@ def corner(c: C):
     """Front-left corner, both arms."""
     h, W, A, k = c.h, c.W, c.ARM, c.corner_chamfer
     fp = [(-h + k, -h), (-h + A, -h), (-h + A, -h + W), (-h + W, -h + W), (-h + W, -h + A), (-h, -h + A), (-h, -h + k)]
-    s = body(c, fp)
+    s = body(c, fp, ends=[("x", -h + A), ("y", -h + A)])
     xs = -h + c.corner_screw
-    arm = slots_front(c, -h, -h + A, top_from=-h + W / 2 - c.slot_cav / 2, inner_from=-h + W - c.slot_depth,
-                      outer_from=-h - 1, breaks=(xs,))
-    arm += shafts_front(c, (xs,))
-    arm += panel_front(c, -h + c.corner_border, -h + A - c.end_border)
+    arm = slots_front(c, -h, -h + A, top_from=-h + 1, inner_from=-h + W - c.slot_depth - 2, mitre=True)
+    arm += screws_front(c, (xs,))
+    arm += panel_front(c, -h + c.corner_border, -h + A, roof=True, open_ends=(False, True))
     tools = arm + [mirror_diag(t) for t in arm]
     return cut_all(s, tools)
 
@@ -229,45 +291,47 @@ def corner(c: C):
 def centre(c: C, kind="plain"):
     h, W, L = c.h, c.W, c.LC
     fp = [(-L / 2, -h), (L / 2, -h), (L / 2, -h + W), (-L / 2, -h + W)]
-    s = body(c, fp)
+    s = body(c, fp, ends=[("x", -L / 2), ("x", L / 2)])
     xs = (-L / 2 + c.centre_screw, L / 2 - c.centre_screw)
-    tools = slots_front(c, -L / 2, L / 2, breaks=xs) + shafts_front(c, xs)
+    tools = slots_front(c, -L / 2, L / 2) + screws_front(c, xs)
     keep, extra, add = None, [], []
-    x0, x1 = -L / 2 + c.end_border, L / 2 - c.end_border
+    x0, x1 = -L / 2, L / 2
+    post = []                                      # cut after the bosses are added
     if kind == "front":
-        txt = (cq.Workplane("XZ", origin=(0, -h + c.plaque_depth, 0))
-               .text(c.text, c.text_h, c.plaque_depth, fontPath=c.font, halign="center", valign="center"))
+        # letters standing on the tray floor
+        yt, dt = -h + c.panel_depth + 0.3, c.text_relief + 0.3
+        txt = (cq.Workplane("XZ", origin=(0, yt, 0))
+               .text(c.text, c.text_h, dt, fontPath=c.font, halign="center", valign="center"))
         tb = txt.val().BoundingBox()
-        room = (x1 - x0) - 2 * c.rib - 12 - 8          # plaque margins + at least a rib each side
+        room = (x1 - x0) - 2 * c.rib - 12 - 8          # margins + at least a rib each side
         if tb.xlen > room:                              # short centre (250): smaller letters
-            txt = (cq.Workplane("XZ", origin=(0, -h + c.plaque_depth, 0))
-                   .text(c.text, c.text_h * room / tb.xlen, c.plaque_depth, fontPath=c.font,
+            txt = (cq.Workplane("XZ", origin=(0, yt, 0))
+                   .text(c.text, c.text_h * room / tb.xlen, dt, fontPath=c.font,
                          halign="center", valign="center"))
             tb = txt.val().BoundingBox()
         zc = (c.panel_z0 + c.panel_z1) / 2
         txt = txt.translate((0, 0, zc - (tb.zmin + tb.zmax) / 2))
         tb = txt.val().BoundingBox()
-        pl = rrect(tb.xmin - 6, tb.xmax + 6, c.panel_z0 + c.rib, c.panel_z1 - c.rib, 2.0)
-        keep = pl.buffer(c.rib)
-        extra.append(xz_prism(pl, -h - 1, -h + c.plaque_depth))
+        keep = rrect(tb.xmin - 6, tb.xmax + 6, c.panel_z0, c.panel_z1, 2.0)   # no cells behind the text
         add.append(txt.val())
     if kind == "rear":
+        # full-depth bosses: the grommets need the whole 20 mm
         zs, xs_h = c.hole_rows, c.hole_cols
-        r = c.hole_d / 2 + 3
-        pl = rrect(min(xs_h) - r - 1, max(xs_h) + r + 1, min(zs) - r, max(zs) + r, 3.0)
-        keep = pl.buffer(c.rib)
-        extra.append(xz_prism(pl, -h - 1, -h + c.panel_depth))
+        rb = c.hole_d / 2 + 4.5                   # (not tangent to the tray edge at z 61)
+        keep = unary_union([Point(x, z).buffer(rb + c.rib) for z in zs for x in xs_h])
+        bosses = unary_union([Point(x, z).buffer(rb, resolution=16) for z in zs for x in xs_h])
         for z in zs:
             for x in xs_h:
-                extra.append(cq.Solid.makeCylinder(c.hole_d / 2, W + 2, cq.Vector(x, -h - 1, z), cq.Vector(0, 1, 0)))
-                # chamfer at the outer mouth
-                extra.append(cq.Solid.makeCone(c.hole_d / 2 + 1.2, c.hole_d / 2, 1.2,
-                                               cq.Vector(x, -h + c.panel_depth - 0.01, z), cq.Vector(0, 1, 0)))
-    tools += panel_front(c, x0, x1, keep) + extra
+                hole = cq.Solid.makeCylinder(c.hole_d / 2, W + 2, cq.Vector(x, -h - 1, z), cq.Vector(0, 1, 0))
+                mouth = cq.Solid.makeCone(c.hole_d / 2 + 1.2, c.hole_d / 2, 1.2,
+                                          cq.Vector(x, -h - 0.01, z), cq.Vector(0, 1, 0))
+                for t_ in (hole, mouth):           # turn the seam away from the mesh's other edges
+                    post.append(t_.rotate(cq.Vector(x, 0, z), cq.Vector(x, 1, z), 37))
+    tools += panel_front(c, x0, x1, keep, solid=bosses if kind == "rear" else None) + extra
     s = cut_all(s, tools)
-    for a in add:
-        s = s.fuse(a)
-    return s.clean()
+    if add:
+        s = s.fuse(*add, glue=False).clean()
+    return cut_all(s, post)
 
 
 def grommet(c: C, plug=False):
@@ -303,8 +367,11 @@ def assembly(p):
     return out
 
 
-def to_print(s):
-    """Lay a piece on the bed at the origin (as printed: bottom down)."""
+def to_print(s, lay_flat=False):
+    """Place a piece on the bed at the origin as printed: bottom down, or (lay_flat, the
+    straight centres) lying on its flat inner face with the pattern up."""
+    if lay_flat:
+        s = s.rotate(cq.Vector(0, 0, 0), cq.Vector(1, 0, 0), -90)
     b = s.BoundingBox()
     return s.moved(cq.Location(cq.Vector(-(b.xmin + b.xmax) / 2, -(b.ymin + b.ymax) / 2, -b.zmin)))
 
@@ -325,7 +392,7 @@ def export(c: C, stl_dir: Path, step_dir: Path, grommets=True):
         else:
             p[n.replace("tophat_", f"tophat_{c.size}_") + suffix] = s
     for n, s in p.items():
-        s2 = to_print(s)
+        s2 = to_print(s, lay_flat="centre" in n)
         sub = "" if "tpu" in n else str(c.size)
         cq.exporters.export(cq.Workplane("XY").add(s2), str(step_dir / sub / f"{n}.step"))
         export_stl(s2, stl_dir / sub / f"{n}.stl", deflection=0.03)
