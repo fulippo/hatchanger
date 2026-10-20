@@ -1,9 +1,10 @@
 """
-HatChanger v0.33, filament-cutter variant (FilamATrix), Galileo 2 (G2E) integration.
+HatChanger v0.34, filament-cutter variant (FilamATrix), Galileo 2 (G2E) integration.
 
 Parts
   front_body_hatchanger : the FilamATrix G2E front body (cutter insert, after-gears sensor, arm
-                   clearance) with our top: raised flat interface pad, 2 dowel pins, cone socket
+                   clearance) with our top: raised flat interface pad, 2 dowel pins beside the
+                   filament hole, 2 magnets at the front, cone socket
                    for the stinger, pocket for the pin half of the magnetic pogo connector (hat ID). Stock G2E board mount (any board that fits it).
   hat            : ECAS04 on top, continuous 4x2 bowden through it (the stinger), V-ridge rails
                    with a tapered nose, pad half of the pogo connector + ID resistor; locates on
@@ -54,7 +55,10 @@ class P:
     magnet_d: float = 6.0          # 6x3, SH/UH grade
     magnet_h: float = 3.0
     magnet_fit: float = 0.1
-    magnet_xy: tuple = (7.0, 5.0)  # (+-x, y) rel. filament axis: magnets at the BACK (v0.30), so wires
+    magnet_xy: tuple = (7.0, -4.0) # (+-x, y) rel. filament axis. v0.34 (pogo): at the FRONT, where the
+                                   #   dowels were: ~15 mm of lever about the hat's back edge, the one it
+                                   #   tips about when a steep bowden pulls. No wires: the ID is on the pogo.
+                                   #   (v0.30-v0.33: (7, 5), at the back, as the ID contacts:
                                    #   reach them from the cable side and the hat can hold the ID resistor
     # hat ID: the two interface magnet pairs are the contacts (nickel plating), a resistor in the hat
     # bridges its two magnets, the head reads it through its two magnets
@@ -80,7 +84,8 @@ class P:
     # hat ID through a 2-pin MAGNETIC pogo connector (v0.33): pin half in the head, pad half in the
     # hat, behind the cone socket, long axis along X. Its own magnets replace the two 6x3 interface
     # magnets (and their pockets, wire channel, resistor slot); the hat's resistor is soldered to the
-    # pad half's tails. False = v0.32: the magnets are the contacts (id_contacts).
+    # pad half's tails. False = v0.32: the magnets are the contacts (id_contacts); also set
+    # magnet_xy = (7, 5) and pin_xy = (7, -4) for that layout.
     pogo: bool = True
     pogo_l: float = 18.32          # connector length WITH its mounting ears (kept: glue area, and
                                    #   the pocket is cut full length so the ears can sit anywhere in Z)
@@ -115,7 +120,8 @@ class P:
     pin_depth: float = 4.2         # a cavity sits ~5 mm under the +X pin: do not go deeper
     pin_protrusion: float = 3.8    # -> 3x8 mm steel dowel
     pin_hole_extra: float = 0.5    # hat dowel holes are this much deeper than the pin protrusion
-    pin_xy: tuple = (7.0, -4.0)    # (+-x, y) relative to the filament axis: dowels at the FRONT (v0.30)
+    pin_xy: tuple = (7.0, 2.1)     # (+-x, y) relative to the filament axis. v0.34: beside the filament hole,
+                                   #   between the front magnets and the pogo pocket (v0.30-v0.33: (7, -4))
 
     # ---- FilamATrix base (v0.29) -----------------------------------------------------------
     # The front body is built on the FilamATrix G2E front body (GPL-3.0, thunderkeys), taken from
@@ -229,7 +235,9 @@ class P:
     bottom_chamfer: float = 0.6
     pin_hole_clear: float = 3.4    # prints ~3.1-3.25: free sliding fit on a 3 mm dowel
     pin_slot_len: float = 1.2      # extra length of the slotted hole along X
-    pin_lead_in: float = 1.3       # lead-in cone on both dowel holes: radial growth at the hat face
+    pin_lead_in: float = 0.6       # lead-in cone on both dowel holes: radial growth at the hat face.
+                                   #   v0.34: 0.6 (mouth 4.6) keeps ~0.7 mm to the magnet and the pogo pocket
+                                   #   (v0.26-v0.33: 1.3)
                                    #   (mouth 6.0: ~0.4 mm of wall left to the bottom chamfer on the
                                    #   -X side; v0.25: 1.0)
     pin_lead_depth: float = 1.5    # cone height (v0.25: 1.0, 45 deg). Leaves 2.3 mm of straight bore
@@ -513,11 +521,10 @@ def front_body_hatchanger(p: P, stock: cq.Shape, g2_body: cq.Shape = None) -> cq
     # 3. magnets and dowel pins
     mx, my = p.magnet_xy
     px, py = p.pin_xy
-    mdepth = p.magnet_h + (p.head_wire_gap if p.id_contacts else 0.1)
+    mdepth = p.magnet_h + (p.head_wire_gap if p.id_contacts and not p.pogo else 0.1)
     for s in (-1, 1):
-        if not p.pogo:
-            body = body.cut(cyl_z(p.magnet_d + p.magnet_fit, p.z_if - mdepth,
-                                  mdepth + 1, x=s * mx, y=ay + my), clean=False)
+        body = body.cut(cyl_z(p.magnet_d + p.magnet_fit, p.z_if - mdepth,
+                              mdepth + 1, x=s * mx, y=ay + my), clean=False)
         body = body.cut(cyl_z(p.pin_hole_press, p.z_if - p.pin_depth, p.pin_depth + 1,
                               x=s * px, y=ay + py), clean=False)
     if p.pogo:
@@ -896,7 +903,7 @@ def cartridge(p: P) -> cq.Workplane:
     mx, my = p.magnet_xy
     px, py = p.pin_xy
     hp = p.pin_protrusion + p.pin_hole_extra
-    mdepth = p.magnet_h + (p.hat_wire_gap if p.id_contacts else 0.0)
+    mdepth = p.magnet_h + (p.hat_wire_gap if p.id_contacts and not p.pogo else 0.1)
     if p.pogo:
         # pad half, pads down, face pogo_recess above the hat face; the resistor sits in a cavity
         # above the tails, soldered across them
@@ -904,9 +911,8 @@ def cartridge(p: P) -> cq.Workplane:
         z0 = p.pogo_h + p.pogo_recess + p.pogo_tail
         yc, hw = pogo_yc(p), p.pogo_res_w / 2
         body = body.cut(box(-p.pogo_res_x, p.pogo_res_x, yc - hw, yc + hw, z0, z0 + p.pogo_res_h))
-    else:
-        for s in (-1, 1):
-            body = body.cut(cyl_z(p.magnet_d + p.magnet_fit, -1, mdepth + 1, x=s * mx, y=my))
+    for s in (-1, 1):
+        body = body.cut(cyl_z(p.magnet_d + p.magnet_fit, -1, mdepth + 1, x=s * mx, y=my))
     if p.id_contacts and not p.pogo:                                          # resistor slot from the back face
         z0, z1 = p.id_slot_z
         # stadium profile (round ends) seen from the back, run in Y from id_slot_y0 out of the back face

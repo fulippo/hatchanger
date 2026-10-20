@@ -10,6 +10,7 @@ The only HatChanger part on the toolhead is `front_body_hatchanger`, built on th
 | 1 | `front_body_hatchanger` | Printed ABS/ASA. Replaces the G2E `front_body` (and FilamATrix's `front_body_g2e`). The +X wall in front of the toolhead board is 1 mm thinner than stock, so an SB2209 doesn't touch it |
 | 2 | Dowel pin 3×8 mm | ISO 8734 / DIN 6325, hardened, m6. Press in after drilling the holes to 3.0 mm |
 | 1 | 2-pin magnetic pogo connector, 2.54 mm pitch, pin half | Body 15.4 × 4.05 × 4.13 mm, 18.32 mm over the mounting ears (keep them), 1.4 mm tails, pins 1.0 mm proud. Holds the hat down with its built-in magnets and carries the hat ID. Another connector works if you set the `pogo_*` sizes in `hatchanger_cad.py` and rebuild |
+| 2 | Magnet Ø6×3 mm, axial, N42SH | Front of the pad, facing the hat's bottom magnets. High-temp grade (150 °C) for chamber heat; standard N grades are rated to 80 °C |
 | 1 | M1.4×5 self-tapping screw | −X ear of the pin half. The +X ear isn't screwed: the rear body's M3 screw ends right under it |
 | 1 | Omron D2F switch, pin plunger | After-gears filament sensor (D2F or D2F-5, no lever), FilamATrix's +X pocket. Genuine Omron from DigiKey/Mouser or a clone |
 | 1 | Steel ball 5.5 mm | Sensor ball; 304 stainless is fine |
@@ -24,7 +25,7 @@ The only HatChanger part on the toolhead is `front_body_hatchanger`, built on th
 |---:|---:|---|---|
 | 1 | 5 | `hat` | Printed ABS/ASA |
 | 1 | 5 | ECAS04 bowden coupler | Genuine Bondtech Push-fit ECAS 4 mm; generic clones also work |
-| 2 | 10 | Magnet Ø6×3 mm, axial, N42SH | Front face (rack snap). High-temp grade (150 °C) for chamber heat; standard N grades are rated to 80 °C |
+| 4 | 20 | Magnet Ø6×3 mm, axial, N42SH | 2 in the bottom, at the front (to the head), 2 in the front face (rack snap). High-temp grade (150 °C) for chamber heat; standard N grades are rated to 80 °C |
 | 1 | 5 | 2-pin magnetic pogo connector, 2.54 mm pitch, pad half | Mates with the head's pin half: holds the hat down and carries the hat ID |
 | 2 | 10 | M1.4×5 self-tapping screw | Both ears of the pad half |
 | (1) | (5) | Resistor, one value per lane | Hat ID (optional, `hatchanger_id.cfg`): soldered across the pad half's tails. 1/4 W axial or 1206 SMD |
@@ -80,7 +81,7 @@ About **85 g of ABS/ASA** (without spacers) in total (model volume × 1.05 g/cm�
   2. **Head:** solder two thin wires (~30 AWG) to the pin half's tails, lay them in the slot behind the pocket and out of the channel on the +X side (behind the cable cover), then glue the pin half in, pins up.
   3. **Hat:** solder the hat's resistor across the pad half's tails (an axial one lies along X in the cavity above them, leads bent down), push it in resistor first, pads down, and glue it.
   4. With a hat seated, measure between the two head wires: you should read the hat's resistor.
-- **Magnet polarity:** mark one face of every magnet before gluing. Glue one reference hat first (front-face magnets) and use it to orient every rack. Glue the two front-face magnets of a hat with the same face outward, and check that a hat snaps flat against its rack before the glue sets.
+- **Magnet polarity:** mark one face of every magnet before gluing. Glue one reference hat first (bottom and front-face magnets) and use it to orient the toolhead and every rack, so all hats attract in the same orientation. Glue the two front-face magnets of a hat with the same face outward, and check that a hat snaps flat against its rack before the glue sets.
 - **Stinger:**
   1. Cut the bowden end square and lightly chamfer its outer edge. Push it down through the ECAS, the hat and the sleeve.
   2. Stand the hat on the `stinger_gauge` (it has a pocket for the cone) and push until the tube bottoms in the gauge; the ECAS then holds it 20.5 mm below the hat (about 3.5 mm of bare tube below the sleeve).
