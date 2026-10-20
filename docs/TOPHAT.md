@@ -11,19 +11,17 @@ the rear wall.
 
 - **Same footprint as the frame.** The wall is 20 mm wide, right on top of the top extrusions,
   so the inside of the chamber is unchanged and the stock top panel sits on top of it.
-- **A printed 2020 on top.** The top 20 mm of the wall has T-slots on the top, outer and inner
-  faces (6.2 mm opening, 6.1 mm deep). Panel clips, LED bars, tube guides and anything else you
-  clamp on a top extrusion fit here, with roll-in or spring T-nuts. The outer slot wraps around
-  the corners. The walls between the slots are thin, as on a real 2020, so clamp light parts.
-- **Hollowed from the outside.** Below the top band the outer face is a deep tray with the
-  honeycomb on its floor, on a 3.5 mm skin; the inner face (chamber side) is flat. Fillets
-  (12 mm at the top, 8 mm at the bottom) brace the skin against the top band and the foot. Full 20 mm
-  only where it matters: the top band, the 7 mm foot, the corner columns and the bosses round
-  the bowden exits. The trays and the pattern run on through the joints, so the wall reads as
-  one part: the pattern is the same for every piece of a side, centred and mirror-symmetric.
-  The front letters stand 4 mm off the tray floor.
-- **Foam gaps.** The pieces are 2.5 mm apart: fill each joint with a 3 mm closed-cell foam strip.
-  Foam tape also goes under the wall (on the extrusion) and under the panel.
+- **2020 slots on top and inside.** The top face is 20 mm wide with a T-slot, and the inner
+  (chamber) face has another, both 6.2 mm opening and 6.1 mm deep as on a 2020. Panel clips, LED
+  bars, tube guides and anything else you clamp on a top extrusion fit here, with roll-in or
+  spring T-nuts. The walls round the slots are thin, as on a real 2020, so clamp light parts.
+- **Hollowed from the outside.** The outer face is a deep tray, from the 7 mm foot up to a 7 mm
+  lip under the top, with the honeycomb on its floor, on a 3.5 mm skin; the inner face (chamber
+  side) is flat. Fillets (12 mm at the top, 8 mm at the bottom) brace the skin against the top
+  and the foot. Full 20 mm only where it matters: the top, the foot, the corner columns and the
+  bosses round the bowden exits. The trays and the pattern run on through the joints, so the
+  wall reads as one part: the pattern is the same for every piece of a side, centred and
+  mirror-symmetric. The front letters stand 4 mm off the tray floor.
 - **Screwed to the frame.** Two M3 × 10 screws per piece, through the 5 mm foot into roll-in
   T-nuts in the frame's top slots. Each hole has a 6.5 mm counterbore opening into the tray, so
   the screw is tightened from outside the printer with the short arm of a 2.5 mm L-key.
@@ -64,9 +62,9 @@ Every piece fits a 250 mm bed. Print in ASA/ABS, no supports, as exported:
 
 | Size | Frame | Centre pieces | Filament, 4 walls 15 % (approx.) |
 |---|---:|---:|---:|
-| 250 | 410 mm | 165 × 85 × 20 mm | 1.0 kg |
-| 300 | 460 mm | 215 × 85 × 20 mm | 1.1 kg |
-| 350 | 510 mm | 265 × 85 × 20 mm | 1.3 kg |
+| 250 | 410 mm | 165 × 85 × 20 mm | 0.9 kg |
+| 300 | 460 mm | 215 × 85 × 20 mm | 1.0 kg |
+| 350 | 510 mm | 265 × 85 × 20 mm | 1.1 kg |
 
 The `_voronoi` files are the same pieces with a voronoi pattern instead of the honeycomb.
 

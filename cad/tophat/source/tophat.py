@@ -1,10 +1,10 @@
 """
 HatChanger top hat: a raised canopy wall for a heated chamber (Voron 2.4 250 / 300 / 350).
 
-The wall stands on the top extrusions with the same 20 mm footprint, so its top is a printed
-"2020": top face 20 mm wide with a T-slot on top, one on the outer face and one on the inner face
-(roll-in / spring T-nuts: panel clips, LED bars, tube guides... clamp on it as on the frame). The
-stock top panel sits on it.
+The wall stands on the top extrusions with the same 20 mm footprint: a 20 mm top face with a
+T-slot on top and one on the inner face, as on a 2020 (roll-in / spring T-nuts: panel clips, LED
+bars, tube guides... clamp on it as on the frame). The stock top panel sits on it. The outer face
+is a tray with the pattern, up to a 7 mm lip under the top.
 
 Pieces (each fits a 250 bed or larger), separated by FOAM_GAP for closed-cell foam strips:
   tophat_<size>_corner        x4  L, ARM x ARM
@@ -54,7 +54,7 @@ class C:
     # outer panel
     corner_border: float = 20.0 # plain column at the corners (the vertical extrusion's footprint)
     panel_z0: float = 7.0
-    panel_gap_top: float = 4.0  # below the top band
+    top_lip: float = 7.0        # plain band above the tray (holds the top slot)
     panel_r: float = 3.0
     panel_depth: float = 14.0   # the panel is a tray in the outer face (rib tops): the wall is
                                 #   hollowed from the outside like the canopy, the inner side
@@ -83,7 +83,7 @@ class C:
     @property
     def LC(self): return self.F - 2 * self.ARM - 2 * self.FOAM_GAP
     @property
-    def panel_z1(self): return self.H - self.W - self.panel_gap_top
+    def panel_z1(self): return self.H - self.top_lip
 
 
 def slot_poly(c: C):
@@ -99,24 +99,16 @@ def prism_x(pts_yz, x0, x1):
     return w.val()
 
 
-def slots_front(c: C, x0, x1, top_from=None, inner_from=None, outer_from=None, breaks=()):
-    """Cutters for the three slots of a front-side wall between x0 and x1 (outer face y = -h)."""
+def slots_front(c: C, x0, x1, top_from=None, inner_from=None):
+    """Cutters for the T-slots of a front-side wall between x0 and x1 (outer face y = -h): one on
+    top and one on the inner (chamber) face. The outer face is all tray."""
     h, H, W = c.h, c.H, c.W
     sp = slot_poly(c)
     yc, zc = -h + W / 2, H - W / 2
     top = [(yc + u, H - d) for u, d in sp]
-    outer = [(-h + d, zc + u) for u, d in sp]
     inner = [(-h + W - d, zc + u) for u, d in sp]
-    cuts = [prism_x(top, top_from if top_from is not None else x0 - 1, x1 + 1)]
-    def segs(a, b):
-        out, s = [], a
-        for x in sorted(breaks):
-            out.append((s, x - 6)); s = x + 6
-        out.append((s, b)); return [(p, q) for p, q in out if q > p]
-    for poly, start in ((outer, outer_from), (inner, inner_from)):
-        for p, q in segs(start if start is not None else x0 - 1, x1 + 1):
-            cuts.append(prism_x(poly, p, q))
-    return cuts
+    return [prism_x(top, top_from if top_from is not None else x0 - 1, x1 + 1),
+            prism_x(inner, inner_from if inner_from is not None else x0 - 1, x1 + 1)]
 
 
 def screws_front(c: C, xs):
@@ -278,8 +270,7 @@ def corner(c: C):
     fp = [(-h + k, -h), (-h + A, -h), (-h + A, -h + W), (-h + W, -h + W), (-h + W, -h + A), (-h, -h + A), (-h, -h + k)]
     s = body(c, fp)
     xs = -h + c.corner_screw
-    arm = slots_front(c, -h, -h + A, top_from=-h + W / 2 - c.slot_cav / 2, inner_from=-h + W - c.slot_depth,
-                      outer_from=-h - 1)
+    arm = slots_front(c, -h, -h + A, top_from=-h + W / 2 - c.slot_cav / 2, inner_from=-h + W - c.slot_depth)
     arm += screws_front(c, (xs,))
     arm += panel_front(c, -h + c.corner_border, -h + A, roof=True, open_ends=(False, True))
     tools = arm + [mirror_diag(t) for t in arm]
