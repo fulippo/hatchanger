@@ -1,5 +1,5 @@
 """
-HatChanger v0.41, filament-cutter variant (FilamATrix), Galileo 2 (G2E) integration.
+HatChanger v0.42, filament-cutter variant (FilamATrix), Galileo 2 (G2E) integration.
 
 Parts
   front_body_hatchanger : the FilamATrix G2E front body (cutter insert, after-gears sensor, arm
@@ -154,6 +154,8 @@ class P:
     fmx_fill_z0: float = 108.9     #   then our seat is re-cut (stops at the switch pocket, x -5.35).
     fmx_fill_z1: float = 110.4     #   Below z1 only x <= fmx_fill_x: the idler bearing cover
     fmx_fill_x: float = 1.8        #   reaches up to z 110.25 at x >= 1.9
+    fmx_fill_y1: float = 5.15      # fill clipped at this y (rel. axis): the back face is at 5.2 there, and the
+                                   #   r 5.3 cylinder left a 0.1 mm sliver standing out of it (gear side)
     # FilamATrix's pre-gear switch (not used: the hat sits there) is filled with the stock G2E
     # body's material inside these boxes: its pocket and M2 screw holes on -X, and the slot through
     # the front wall at z ~118-120
@@ -541,7 +543,8 @@ def front_body_hatchanger(p: P, stock: cq.Shape, g2_body: cq.Shape = None) -> cq
     low = cyl_z(2 * p.fmx_fill_r, p.fmx_fill_z0, p.fmx_fill_z1 - p.fmx_fill_z0 + 0.01, y=ay)
     low = low.intersect(box(-p.fmx_fill_r - 1, p.fmx_fill_x, ay - p.fmx_fill_r - 1, ay + p.fmx_fill_r + 1,
                             p.fmx_fill_z0 - 1, p.fmx_fill_z1 + 1))
-    body = body.union(fill.union(low), clean=False)
+    clip = box(-20, 20, -20, ay + p.fmx_fill_y1, p.fmx_fill_z0 - 1, p.z_if + 3)
+    body = body.union(fill.union(low).intersect(clip), clean=False)
 
     # 1. flat interface pad (built inside the same print layers as the body: no supports)
     pad = box(-p.pad_x, p.pad_x, p.pad_y0, p.pad_y1, p.z_if - p.pad_depth - 1.0, p.z_if)
