@@ -1,5 +1,5 @@
 """
-HatChanger v0.40, filament-cutter variant (FilamATrix), Galileo 2 (G2E) integration.
+HatChanger v0.41, filament-cutter variant (FilamATrix), Galileo 2 (G2E) integration.
 
 Parts
   front_body_hatchanger : the FilamATrix G2E front body (cutter insert, after-gears sensor, arm
@@ -110,6 +110,14 @@ class P:
                                            #   (and its insert): an M1.4 x 3 there, x 5 on -X
     pogo_cone_wall: float = 0.9    # wall between the head pocket and the cone socket mouth
     pogo_tail_x: float = 3.0       # tail / solder-joint room under the connector: +-x, full width,
+    # head: break-away support in the connector pocket (as FilamATrix's in the D2F pocket). The body
+    # prints front face down, so the pocket's back wall is an ~19 mm bridge. 0.4 mm plates on a
+    # pogo_sup_pitch grid (constant X, plus one at the face end tying them together) stand on the
+    # pocket's front wall and stop pogo_sup_gap short of every other wall, the rings and the ceiling.
+    pogo_support: bool = True
+    pogo_sup_t: float = 0.4
+    pogo_sup_pitch: float = 2.0
+    pogo_sup_gap: float = 0.4
     pogo_head_tail_x: float = 5.0  #   (head, v0.39: +-5, to the edge of the +X M3 insert; the hat is hollow)
     pogo_tail_room: float = 0.8    #   pogo_tail + this deep
     pogo_wire_slot: float = 1.4    # head: wire slot behind the pocket (Y), from the tails up to the
@@ -410,6 +418,33 @@ def pogo_outline(p: P, z0: float, z1: float, y_axis: float = 0.0) -> cq.Workplan
     return cut
 
 
+def pogo_head_support(p: P) -> cq.Workplane:
+    """Break-away support for the head's connector pocket (G2E frame), see pogo_support."""
+    ay, g, t = AXIS_Y, p.pogo_sup_gap, p.pogo_sup_t
+    ztop = p.z_if - 0.2
+    zf = p.z_if - p.pogo_h - p.pogo_recess
+    zb = zf - p.pogo_tail - p.pogo_tail_room
+    yc, hw = ay + pogo_yc(p), p.pogo_w / 2 + p.pogo_clear
+    room = pogo_outline(p, zf, ztop, ay).union(
+        box(-p.pogo_head_tail_x, p.pogo_head_tail_x, yc - hw, yc + hw, zb, zf + 0.01))
+    # keep only what stays inside the pocket when moved g towards the ceiling (+Y), +-X and the
+    # floor (-Z): a g gap there, none at the front wall (-Y), where the plates stand
+    reg = room
+    for v in ((0, g, 0), (g, 0, 0), (-g, 0, 0), (0, 0, -g)):
+        reg = reg.intersect(room.translate((-v[0], -v[1], -v[2])))
+    xe = p.pogo_l / 2 - p.pogo_ear_hole_inset
+    for sx in (-1, 1):                                    # clear of the rings
+        reg = reg.cut(cyl_z(2 * (p.pogo_cap_r + g), zb - 1, (zf + p.pogo_ear_z + g) - (zb - 1),
+                            x=sx * xe, y=yc))
+    xl = p.pogo_l / 2 + 1
+    comb = box(-xl, xl, yc - hw - 1, yc + hw + 1, ztop - t, ztop)        # tie plate at the face end
+    n = int(xl / p.pogo_sup_pitch) + 1
+    for i in range(-n, n + 1):
+        x = i * p.pogo_sup_pitch
+        comb = comb.union(box(x - t / 2, x + t / 2, yc - hw - 1, yc + hw + 1, zb - 1, ztop))
+    return reg.intersect(comb).translate((0, -0.05, 0))      # 0.05 into the front wall: fused
+
+
 def pogo_screws(p: P, z_face: float, down: int, sides, y_axis: float = 0.0,
                 raise_: float = 0.0) -> cq.Workplane:
     """Pilot holes for the ear screws, from the pocket floor (less raise_, towards the face)
@@ -567,6 +602,8 @@ def front_body_hatchanger(p: P, stock: cq.Shape, g2_body: cq.Shape = None) -> cq
         for sx in (-1, 1):
             body = body.union(cyl_z(2 * p.pogo_cap_r, zf - 0.01, p.pogo_ear_z + 0.01, x=sx * xe,
                                     y=ay + pogo_yc(p)), clean=False)
+        if p.pogo_support:
+            body = body.union(pogo_head_support(p), clean=False)
         for sx in p.pogo_head_screws:
             q = p if sx < 0 else replace(p, pogo_screw_depth=p.pogo_head_screw_depth_px)
             body = body.cut(pogo_screws(q, p.z_if, -1, (sx,), ay, raise_=p.pogo_ear_z), clean=False)
