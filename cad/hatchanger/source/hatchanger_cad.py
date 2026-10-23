@@ -1,5 +1,5 @@
 """
-HatChanger v0.42, filament-cutter variant (FilamATrix), Galileo 2 (G2E) integration.
+HatChanger v0.43, filament-cutter variant (FilamATrix), Galileo 2 (G2E) integration.
 
 Parts
   front_body_hatchanger : the FilamATrix G2E front body (cutter insert, after-gears sensor, arm
@@ -94,6 +94,9 @@ class P:
     pogo_h: float = 4.13           # body height, face to back (without pins / tails)
     pogo_tail: float = 1.4         # solder tails below the back
     pogo_pitch: float = 2.54       # 2 pins, +-pitch/2 about the centre
+    pogo_yc_clear: float = 0.2     # (only places the connector: pogo_yc; keep it when changing pogo_clear)
+    pogo_head_clear: float = 0.35  # head pocket clearance per side (v0.43; 0.2 was too tight past the seam,
+                                   #   the walls at the ear ends print vertical). Wall to the socket 0.75
     pogo_clear: float = 0.2        # pocket clearance per side (X, Y). v0.35: 0.2 (0.1 was too tight with
                                    #   the slicer seam on the hat's vertical pocket walls)
     pogo_recess: float = 0.1       # pocket floor this much deeper than the body height. The connector
@@ -382,7 +385,7 @@ def cyl_z(d, z0, h, x=0.0, y=0.0):
 # ======================================================================================
 def pogo_yc(p: P) -> float:
     """Y (rel. the filament axis) of the pogo connector centre: just behind the cone socket mouth."""
-    return p.cone_d0 / 2 + p.cone_clear + p.pogo_cone_wall + p.pogo_clear + p.pogo_w / 2
+    return p.cone_d0 / 2 + p.cone_clear + p.pogo_cone_wall + p.pogo_yc_clear + p.pogo_w / 2
 
 
 def hat_back_ext(p: P) -> float:
@@ -587,6 +590,7 @@ def front_body_hatchanger(p: P, stock: cq.Shape, g2_body: cq.Shape = None) -> cq
         body = body.cut(cyl_z(p.pin_hole_press, p.z_if - p.pin_depth, p.pin_depth + 1,
                               x=s * px, y=ay + py), clean=False)
     if p.pogo:
+        p = replace(p, pogo_clear=p.pogo_head_clear)            # head pocket only
         # pin half, pins up, face pogo_recess below the pad. The two wires leave the tails through a
         # slot behind the pocket, rise to the head_wire_z channel and run out on the +X side
         # (behind the cable cover), like the v0.32 magnet wires.
