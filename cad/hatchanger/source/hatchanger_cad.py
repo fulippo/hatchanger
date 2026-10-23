@@ -1,5 +1,5 @@
 """
-HatChanger v0.43, filament-cutter variant (FilamATrix), Galileo 2 (G2E) integration.
+HatChanger v0.44, filament-cutter variant (FilamATrix), Galileo 2 (G2E) integration.
 
 Parts
   front_body_hatchanger : the FilamATrix G2E front body (cutter insert, after-gears sensor, arm
@@ -97,6 +97,9 @@ class P:
     pogo_yc_clear: float = 0.2     # (only places the connector: pogo_yc; keep it when changing pogo_clear)
     pogo_head_clear: float = 0.35  # head pocket clearance per side (v0.43; 0.2 was too tight past the seam,
                                    #   the walls at the ear ends print vertical). Wall to the socket 0.75
+    pogo_head_ext_x: float = 0.5   # head pocket: each ear end this much further out (v0.44: the ears
+                                   #   didn't go in with the 0.35 clearance alone). Rings and screws stay put
+    pogo_ext_x: float = 0.0        #   (the value in use; set from pogo_head_ext_x for the head)
     pogo_clear: float = 0.2        # pocket clearance per side (X, Y). v0.35: 0.2 (0.1 was too tight with
                                    #   the slicer seam on the hat's vertical pocket walls)
     pogo_recess: float = 0.1       # pocket floor this much deeper than the body height. The connector
@@ -418,8 +421,10 @@ def pogo_outline(p: P, z0: float, z1: float, y_axis: float = 0.0) -> cq.Workplan
     cut = box(-bl, bl, yc - hw, yc + hw, z0, z1)
     for sx in (-1, 1):                                  # ears: straight from the body, round end
         x0, x1 = sorted((sx * (bl - 0.5), sx * xe))
+        x1e = sx * (xe + p.pogo_ext_x)
+        x0, x1 = sorted((sx * (bl - 0.5), x1e))
         cut = cut.union(box(x0, x1, yc - re, yc + re, z0, z1))
-        cut = cut.union(cyl_z(2 * re, z0, z1 - z0, x=sx * xe, y=yc))
+        cut = cut.union(cyl_z(2 * re, z0, z1 - z0, x=x1e, y=yc))
     return cut
 
 
@@ -590,7 +595,7 @@ def front_body_hatchanger(p: P, stock: cq.Shape, g2_body: cq.Shape = None) -> cq
         body = body.cut(cyl_z(p.pin_hole_press, p.z_if - p.pin_depth, p.pin_depth + 1,
                               x=s * px, y=ay + py), clean=False)
     if p.pogo:
-        p = replace(p, pogo_clear=p.pogo_head_clear)            # head pocket only
+        p = replace(p, pogo_clear=p.pogo_head_clear, pogo_ext_x=p.pogo_head_ext_x)   # head pocket only
         # pin half, pins up, face pogo_recess below the pad. The two wires leave the tails through a
         # slot behind the pocket, rise to the head_wire_z channel and run out on the +X side
         # (behind the cable cover), like the v0.32 magnet wires.
