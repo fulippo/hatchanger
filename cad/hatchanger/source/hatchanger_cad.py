@@ -1,5 +1,5 @@
 """
-HatChanger v0.44, filament-cutter variant (FilamATrix), Galileo 2 (G2E) integration.
+HatChanger v0.45, filament-cutter variant (FilamATrix), Galileo 2 (G2E) integration.
 
 Parts
   front_body_hatchanger : the FilamATrix G2E front body (cutter insert, after-gears sensor, arm
@@ -97,7 +97,7 @@ class P:
     pogo_yc_clear: float = 0.2     # (only places the connector: pogo_yc; keep it when changing pogo_clear)
     pogo_head_clear: float = 0.35  # head pocket clearance per side (v0.43; 0.2 was too tight past the seam,
                                    #   the walls at the ear ends print vertical). Wall to the socket 0.75
-    pogo_head_ext_x: float = 0.5   # head pocket: each ear end this much further out (v0.44: the ears
+    pogo_head_ext_x: float = 1.0   # head pocket: each ear end this much further out (v0.45: 1.0; v0.44: 0.5. The ears
                                    #   didn't go in with the 0.35 clearance alone). Rings and screws stay put
     pogo_ext_x: float = 0.0        #   (the value in use; set from pogo_head_ext_x for the head)
     pogo_clear: float = 0.2        # pocket clearance per side (X, Y). v0.35: 0.2 (0.1 was too tight with
