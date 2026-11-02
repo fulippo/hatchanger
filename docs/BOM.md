@@ -19,6 +19,17 @@ The only HatChanger part on the toolhead is `front_body_hatchanger`, built on th
 | — | FilamATrix cutter, G2E version | From the [FilamATrix BOM](https://github.com/thunderkeys/FilamATrix#bill-of-materials): `[a]_cutting_arm_g2e`, `[a]_knife_holder` (or `_olfa`), `rear_body_g2e`, the Stealthburner printhead front + rear for your hotend (with its own heat-set inserts, one of them the lower blade guide), `beefy_depressor` + mount, #4 hobby blade or OLFA KB4-F/5, 0.5×4×25 spring, M2.5×16, M3 screws and inserts as listed there. **Not** their `front_body_g2e`: `front_body_hatchanger` replaces it |
 | — | 2-wire lead | Switch → an IO input on the toolhead board (COM + NC or NO) |
 
+### Without the pogo connector
+
+`front_body_hatchanger_magnets` + `hat_magnets` replace `front_body_hatchanger` + `hat` if you don't want the connector. Two more magnet pairs sit where it was, behind the cone socket, and hold the hat down instead. There is no hat ID (`hatchanger_id.cfg` can't be used). Use the two parts together: they don't mix with the pogo versions.
+
+| Change | Item |
+|---|---|
+| Toolhead: −1 pin half, −2 M1.4 screws, +2 | Magnet Ø6×3 mm, axial, N42SH (4 in all) |
+| Per hat: −1 pad half, −2 M1.4 screws, −resistor, +2 | Magnet Ø6×3 mm, axial, N42SH (6 per hat in all) |
+
+Glue the back magnets like the front ones: flush with the face, oriented with the reference hat.
+
 ## Hat (per lane)
 
 | Per lane | ×5 | Item | Specification / notes |
@@ -54,7 +65,7 @@ The only HatChanger part on the toolhead is `front_body_hatchanger`, built on th
 | Qty | Part | Orientation / post-processing | Est. g |
 |---:|---|---|---:|
 | 1 | `front_body_hatchanger` | As FilamATrix's `front_body_g2e` (front face on the bed). The sensor pocket and the pogo connector pocket come with break-away supports already in the model: don't add slicer supports there. Drill dowel holes to 3.0 mm, check that a hat's cone drops into its socket and lifts out freely, and check that the 5.5 mm ball rolls freely in its channel | ~25 |
-| 5 | `hat` | Upside down as exported: ECAS end on the bed, stinger sleeve pointing up, no supports. All facets are 45° or less; the only overhangs are the 1.2 mm ECAS seat ring, and the horizontal magnet holes. The interface face is a top surface: ironing helps. | ~19 |
+| 5 | `hat` (or `hat_magnets`) | Upside down as exported: ECAS end on the bed, stinger sleeve pointing up, no supports. All facets are 45° or less; the only overhangs are the 1.2 mm ECAS seat ring, and the horizontal magnet holes. The interface face is a top surface: ironing helps. | ~19 |
 | 5 | `hat_rack` | Upright, flat bottom on the bed, no supports | ~38 |
 | (5) | `hat_rack_spacer_12` or `_17` | On its side, as exported (key and groove are vertical sections), no supports | ~30 / ~43 |
 | 1 | `stinger_gauge` | Flat face on the bed, as exported. Assembly jig, one is enough | ~3 |

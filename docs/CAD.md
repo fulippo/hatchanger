@@ -18,6 +18,9 @@ cad/tophat/            optional heated-chamber top hat: stl/<size>/ for 250, 300
 | `hat_rack` | 1 per lane | V-channel bolted to the top front extrusion. The hat's rails slide between a lower and an upper 45° lip on each side wall (1.2 mm of vertical play, flared mouth). Two magnet pairs snap the hat against the plate. |
 | `hat_rack_spacer_12` / `_17` | optional | Moves a rack 12 or 17 mm off the extrusion, towards the chamber, if the head can't reach far enough. |
 | `stinger_gauge` | 1 | Assembly jig that sets how far the bowden sticks out of each hat. |
+| `front_body_hatchanger_magnets` + `hat_magnets` | instead of the two above | The same pair without the pogo connector: two more magnets behind the cone socket, between the dowels. No hat ID. The hat is 0.2 mm longer at the back. Use them together. |
+
+![Without the pogo connector: magnets at the front and the back](images/magnets_variant.png)
 
 ![Pogo connector: pocket in the head, pad half in the hat](images/pogo_connector.png)
 | `ptfe_rail_clamp` / `_4x` | optional | Holds 8 (or 4) bowden tubes side by side, vertical, just outside the frame, on top of a 2020 extrusion. Guides the tubes and keeps them apart; it doesn't grip them. |

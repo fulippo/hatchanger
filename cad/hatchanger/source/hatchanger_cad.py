@@ -1,5 +1,5 @@
 """
-HatChanger v0.45, filament-cutter variant (FilamATrix), Galileo 2 (G2E) integration.
+HatChanger v0.46, filament-cutter variant (FilamATrix), Galileo 2 (G2E) integration.
 
 Parts
   front_body_hatchanger : the FilamATrix G2E front body (cutter insert, after-gears sensor, arm
@@ -9,6 +9,8 @@ Parts
   hat            : ECAS04 on top, continuous 4x2 bowden through it (the stinger), V-ridge rails
                    with a tapered nose, pad half of the pogo connector + ID resistor; locates on
                    the dowels.
+  front_body_hatchanger_magnets + hat_magnets : the same pair without the pogo connector: two more
+                   magnets at the back instead, no hat ID. Use them together.
   stinger_gauge  : jig that sets how far the bowden sticks out of the hat.
   hat_rack       : V-channel dock (lower + upper 45 deg lips) bolted to the top extrusion.
   hat_rack_spacer_<L> : optional block between rack and extrusion, moves the rack L mm towards
@@ -87,6 +89,11 @@ class P:
     # pad half's tails. False = v0.32: the magnets are the contacts (id_contacts); also set
     # magnet_xy = (7, 5) and pin_xy = (7, -4) for that layout.
     pogo: bool = True
+    # without the pogo connector (pogo = False, id_contacts = False: the "_magnets" parts): two more
+    # 6x3 magnet pairs where the connector was, between the dowels and behind the cone socket.
+    # Closest fit: 0.75 to the socket mouth, 0.6 to the hat's dowel lead-ins. No hat ID.
+    back_magnet_xy: tuple = (3.7, 7.2)
+    back_magnet_wall: float = 1.0  # hat wall behind them (the hat grows at the back to keep it)
     pogo_l: float = 18.32          # connector length WITH its mounting ears (kept: glue area, and
                                    #   the pocket is cut full length so the ears can sit anywhere in Z)
     pogo_body_l: float = 15.4      # body length without the ears
@@ -392,9 +399,13 @@ def pogo_yc(p: P) -> float:
 
 
 def hat_back_ext(p: P) -> float:
-    """How far the hat's back face moves back so the pogo pocket keeps pogo_hat_wall behind it."""
+    """How far the hat's back face moves back so the pogo pocket (or the back magnets) keep a wall
+    behind them."""
     if not p.pogo:
-        return 0.0
+        if p.id_contacts:
+            return 0.0
+        by = p.back_magnet_xy[1] + (p.magnet_d + p.magnet_fit) / 2 + p.back_magnet_wall
+        return max(0.0, by - p.cart_d / 2)
     return max(0.0, pogo_yc(p) + p.pogo_w / 2 + p.pogo_clear + p.pogo_hat_wall - p.cart_d / 2)
 
 
@@ -629,6 +640,11 @@ def front_body_hatchanger(p: P, stock: cq.Shape, g2_body: cq.Shape = None) -> cq
             n = p.head_wire_notch
             ch = ch.union(box(s * mx - n / 2, s * mx + n / 2, ay + my, yc, zf - 0.01, zf + 0.6))
         body = body.cut(ch, clean=False)
+    else:                                        # no hat ID: two more magnets at the back
+        bx, by = p.back_magnet_xy
+        for s in (-1, 1):
+            body = body.cut(cyl_z(p.magnet_d + p.magnet_fit, p.z_if - mdepth, mdepth + 1,
+                                  x=s * bx, y=ay + by), clean=False)
     if p.spine and not cone_style(p):
         body = body.cut(spine_slot_tool(p), clean=False)
     if p.board_relief > 0:
@@ -999,6 +1015,9 @@ def cartridge(p: P) -> cq.Workplane:
         body = body.cut(pogo_screws(p, 0.0, 1, (-1, 1), raise_=p.pogo_ear_z))
     for s in (-1, 1):
         body = body.cut(cyl_z(p.magnet_d + p.magnet_fit, -1, mdepth + 1, x=s * mx, y=my))
+        if not p.pogo and not p.id_contacts:                 # no hat ID: back magnets
+            bx, by = p.back_magnet_xy
+            body = body.cut(cyl_z(p.magnet_d + p.magnet_fit, -1, mdepth + 1, x=s * bx, y=by))
     if p.id_contacts and not p.pogo:                                          # resistor slot from the back face
         z0, z1 = p.id_slot_z
         # stadium profile (round ends) seen from the back, run in Y from id_slot_y0 out of the back face
@@ -1392,8 +1411,13 @@ def build(g2_step, fmx, out="out", p: P = P()):
         parts["stinger_spine"] = stinger_spine(p)
     fb = front_body_hatchanger(p, fmx_body, g2_body)
     parts["front_body_hatchanger"] = fb
+    if p.pogo:
+        # variant without the pogo connector: magnets only, no hat ID. Use the pair together.
+        pm = replace(p, pogo=False, id_contacts=False)
+        parts["front_body_hatchanger_magnets"] = front_body_hatchanger(pm, fmx_body, g2_body)
+        parts["hat_magnets"] = cartridge(pm)
     for n, w in parts.items():
-        if n == "hat" and hat_flipped(p):   # print orientation: ECAS end on the bed
+        if n in ("hat", "hat_magnets") and hat_flipped(p):   # print orientation: ECAS end on the bed
             w = w.rotate((0, 0, 0), (1, 0, 0), 180).translate((0, 0, p.cart_h))
         export(n, w)
 
