@@ -53,6 +53,7 @@ The only HatChanger part on the toolhead is `front_body_hatchanger`, built on th
 | 5 | `hat_rack` | Upright, flat bottom on the bed, no supports | ~38 |
 | (5) | `hat_rack_spacer_12` or `_17` | On its side, as exported (key and groove are vertical sections), no supports | ~30 / ~43 |
 | 1 | `stinger_gauge` | Flat face on the bed, as exported. Assembly jig, one is enough | ~3 |
+| (1) | `rack_pitch_jig_50` | Flat, as exported, no supports. Assembly jig: sets neighbouring racks 50 mm apart. Its two end faces are the gauge, so no brim | ~6 |
 | (1) | `ptfe_rail_clamp` | As exported: foot on the bed, bores vertical, no supports | ~19 |
 | (1) | `ptfe_rail_clamp_4x` | 4-tube version, same orientation | ~12 |
 | (1 set) | `tophat_*` | Optional heated-chamber top hat: parts, hardware and orientation in [TOPHAT.md](TOPHAT.md) | ~1000 |

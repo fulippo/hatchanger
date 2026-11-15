@@ -11,6 +11,8 @@ Parts
   hat_rack       : V-channel dock (lower + upper 45 deg lips) bolted to the top extrusion.
   hat_rack_spacer_<L> : optional block between rack and extrusion, moves the rack L mm towards
                    the chamber centre (12 and 17 mm, for M3x20 / M3x25 screws).
+  rack_pitch_jig : gauge block that sets neighbouring racks exactly jig_pitch apart while you
+                   tighten them: slides between two racks, keyed into the 2020 slot.
 
 Frames
   G2E STEP frame : as in "Galileo 2 Extruder.step" (Z up, +Y towards the motor/rear).
@@ -284,6 +286,15 @@ class P:
     # It only fills the volume the extrusion itself used to occupy (z >= ext_bottom), so it adds
     # nothing the head could hit. Screws become M3x(8 + L): 12 -> M3x20, 17 -> M3x25.
     spacer_lens: tuple = (12.0, 17.0)
+    # rack_pitch_jig: racks at a fixed pitch, so lane_x = lane 0 + i * jig_pitch. A U that spans the
+    # gap between two racks (pads on their plates and spacers) and keys into the slot. 50 mm:
+    # 5 lanes reach on a 250 and a 300 (35.5 .. 235.5) and the head still clears a docked
+    # neighbour's stinger (>= ~40, see lane_x in hatchanger.cfg).
+    jig_pitch: float = 50.0
+    jig_spacer: float = 12.0       # spacer behind the racks it's used with (0 = no spacer)
+    jig_pad: float = 3.0           # end pads (X), bearing on each rack's side
+    jig_web: float = 3.0           # web along the extrusion face (Y)
+    jig_h: float = 12.0            # height (Z), centred on the slot
     # back braces: triangular ribs behind the plate, under the extrusion. Docking pushes the hat
     # into the plate low down; the plate would pivot about the extrusion's bottom edge, which puts
     # the layer lines at z = ext_bottom in tension. The ribs' top edges bear on the extrusion (or
@@ -965,6 +976,29 @@ def rack_spacer(p: P, length: float) -> cq.Workplane:
     return s
 
 
+def rack_pitch_jig(p: P, pitch: float = None) -> cq.Workplane:
+    """Gauge for the gap between two neighbouring racks (centre to centre = pitch), as little
+    plastic as possible: a U in plan view. Two end pads bear on the racks' sides (plate + spacer),
+    a thin web joins them along the extrusion's chamber face, and a key on the web drops into the
+    slot, so it hangs there by itself while you tighten the racks. Drawn in the rack frame,
+    returned in print orientation (flat, as drawn: the pads' gauge faces are walls)."""
+    pitch = p.jig_pitch if pitch is None else pitch
+    ow = _rack_outer(p)
+    gap = pitch - 2 * ow
+    assert gap >= 2 * p.jig_pad + 2, f"pitch {pitch} leaves only {gap:.1f} mm between racks"
+    y0 = p.cart_d / 2                                    # plate front face
+    y1 = p.cart_d / 2 + p.plate_t + p.jig_spacer         # extrusion face
+    zc = p.ext_bottom + p.ext_size / 2
+    z0, z1 = zc - p.jig_h / 2, zc + p.jig_h / 2
+    hx = gap / 2
+    g = (box(-hx, -hx + p.jig_pad, y0, y1, z0, z1)
+         .union(box(hx - p.jig_pad, hx, y0, y1, z0, z1))
+         .union(box(-hx, hx, y1 - p.jig_web, y1, z0, z1)))
+    g = g.edges("|Z").chamfer(0.4)
+    g = g.union(_rack_key(p, hx - 0.5, y1))
+    return g.translate((0, 0, -z0))
+
+
 def _soften(w: cq.Workplane, pred, r: float, chamfer: bool = False) -> cq.Workplane:
     """Fillet (or chamfer) the edges of w that match pred(edge). Cosmetic only: if OCC can't
     build it, or the result isn't a single valid solid, w comes back unchanged."""
@@ -1184,7 +1218,8 @@ def build(g2_step, fmx, out="out", p: P = P()):
         cq.exporters.export(w, str(out / f"{name}.step"))
         export_stl(w, out / f"{name}.stl")
 
-    parts = {"hat": cartridge(p), "hat_rack": dock(p), "stinger_gauge": stinger_gauge(p)}
+    parts = {"hat": cartridge(p), "hat_rack": dock(p), "stinger_gauge": stinger_gauge(p),
+             f"rack_pitch_jig_{p.jig_pitch:g}": rack_pitch_jig(p)}
     for L in p.spacer_lens:
         # print on its side: +X face down, so the key and groove profiles are vertical sections
         sp = rack_spacer(p, L).rotate((0, 0, 0), (0, 1, 0), 90)

@@ -83,7 +83,7 @@ Every value marked MEASURE or CALIBRATE in `_HAT_CFG` must match your machine. S
 
 | Value | How to find it |
 |---|---|
-| `lane_x`, `dock_y_in`, `dock_z` | With an empty head and a hat in the rack, run `HAT_CAL_PICKUP LANE=0` (stops `GAP` mm, default 5, under the hat) and jog up until the hat seats. With a hat on the head, `HAT_CAL_DOCK LANE=0 STEP=1..3` walks the docking in stages so you can check each one; `STEP=0` backs out. For `dock_z`, go to `STEP=3` and jog down 0.1 mm at a time until the rails touch the lips. |
+| `lane_x`, `dock_y_in`, `dock_z` | If you mounted the racks with `rack_pitch_jig_50`, only lane 0 needs calibrating: the others are 50 mm apart. With an empty head and a hat in the rack, run `HAT_CAL_PICKUP LANE=0` (stops `GAP` mm, default 5, under the hat) and jog up until the hat seats. With a hat on the head, `HAT_CAL_DOCK LANE=0 STEP=1..3` walks the docking in stages so you can check each one; `STEP=0` backs out. For `dock_z`, go to `STEP=3` and jog down 0.1 mm at a time until the rails touch the lips. |
 | `cut_x_touch`, `cut_x_cut`, `cut_y` | Jog towards the depressor pin and note where the arm first touches it and where it is fully pressed. Check with `HAT_CUT`. |
 | `nozzle_to_nip` | Distance along the filament from the gear contact line to the nozzle tip. Only used to push the cut stub out of the nozzle. |
 | `min_melt_temp` | Lowest nozzle temperature that melts every filament you load. Loading refuses to run below it. |

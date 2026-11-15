@@ -18,5 +18,6 @@ cad/tophat/            optional heated-chamber top hat: stl/<size>/ for 250, 300
 | `hat_rack` | 1 per lane | V-channel bolted to the top front extrusion. The hat's rails slide between a lower and an upper 45° lip on each side wall (1.2 mm of vertical play, flared mouth). Two magnet pairs snap the hat against the plate. |
 | `hat_rack_spacer_12` / `_17` | optional | Moves a rack 12 or 17 mm off the extrusion, towards the chamber, if the head can't reach far enough. |
 | `stinger_gauge` | 1 | Assembly jig that sets how far the bowden sticks out of each hat. |
+| `rack_pitch_jig_50` | 1, optional | Assembly jig that sets neighbouring racks exactly 50 mm apart (centre to centre): a small U that sits between two racks against the extrusion, keyed into its slot; tighten the racks against its ends. Then `lane_x` is lane 0 + 50 mm per lane. Other pitches: `jig_pitch` in `hatchanger_cad.py`. |
 | `ptfe_rail_clamp` / `_4x` | optional | Holds 8 (or 4) bowden tubes side by side, vertical, just outside the frame, on top of a 2020 extrusion. Guides the tubes and keeps them apart; it doesn't grip them. |
 | `tophat_*` | optional | Heated-chamber top hat: an 85 mm canopy wall on the top extrusions with 2020 T-slots on top and inside, foam gaps between pieces and grommeted bowden exits at the back. See [TOPHAT.md](TOPHAT.md). |
